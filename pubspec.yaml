@@ -1,0 +1,23 @@
+name: git_lfs_server
+description: >
+  A simple git-lfs server.
+version: 0.0.1
+homepage: https://github.com/khoa-io/git-lfs-server
+
+environment:
+  sdk: ">=2.14.4 <3.0.0"
+
+dependencies:
+  logging: ^1.0.2
+  shelf: ^1.2.0
+  shelf_router: ^1.0.0
+  shelf_static: ^1.0.0
+  tcp_scanner: ^2.0.5
+  tuple: ^2.0.0
+
+dev_dependencies:
+  lints: ^1.0.0
+
+executables:
+  git-lfs-authenticate: git_lfs_authenticate
+  git-lfs-server: git_lfs_server
