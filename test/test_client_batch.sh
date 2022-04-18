@@ -1,6 +1,7 @@
 #!/bin/bash
 
-curl http://$1/objects/batch \
+echo "https://$1/objects/batch"
+curl --insecure https://$1/objects/batch \
 -X POST \
 -H "Accept: application/vnd.git-lfs+json" \
 -H "Content-Type: application/vnd.git-lfs+json" \

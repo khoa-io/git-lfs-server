@@ -8,6 +8,7 @@ environment:
   sdk: ">=2.14.4 <3.0.0"
 
 dependencies:
+  http_multi_server: ^3.2.0
   logging: ^1.0.2
   shelf: ^1.2.0
   shelf_router: ^1.0.0

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:git_lfs_server/operation.dart';
+import 'package:logging/logging.dart';
 import 'package:tcp_scanner/tcp_scanner.dart';
 
 void main(List<String> args) {
@@ -13,6 +15,14 @@ void main(List<String> args) {
     return;
   }
 
+  _log = Logger('git-lfs-authenticate');
+  Logger.root.level = Level.ALL; // defaults to Level.INFO
+  Logger.root.onRecord.listen((record) {
+    var out = File('git-lfs-authenticate.log').openWrite(mode: FileMode.append);
+    out.writeln('${record.level.name}: ${record.time}: ${record.message}');
+    out.close();
+  });
+
   final url = Platform.environment['GIT_LFS_SERVER_URL'] ?? 'localhost';
   final expiresIn =
       int.parse(Platform.environment['GIT_LFS_EXPIRES_IN'] ?? '120');
@@ -22,6 +32,7 @@ void main(List<String> args) {
 
   if (!operations.any((item) => item.toString() == operation)) {
     stderr.writeln('Invalid LFS operation: $operation');
+    _log.severe('Invalid LFS operation: $operation');
     exitCode = 1;
     return;
   }
@@ -34,7 +45,7 @@ void main(List<String> args) {
   try {
     TcpScannerTask(host, ports, shuffle: true, parallelism: 2)
         .start()
-        .then((report) => exitCode = startServer({
+        .then((report) => startServer({
               'hostname': url,
               'port': report.closedPorts.first,
               'expiresIn': expiresIn,
@@ -49,21 +60,22 @@ void main(List<String> args) {
   }
 }
 
+late final Logger _log;
+
 void printOutput(Map args) {
   final hostname = args['hostname'] as String;
   final port = args['port'] as int;
   final expiresIn = args['expiresIn'] as int;
   final token = base64.encode(utf8.encode(args['token']));
-  final path = args['path'] as String;
   var output = {
-    "href": "http://$hostname:$port",
+    "href": "https://$hostname:$port",
     "header": {"Authorization": "Basic $token"},
     "expires_in": expiresIn
   };
   print(json.encode(output).toString());
 }
 
-int startServer(Map args) {
+void startServer(Map args) {
   final hostname = args['hostname'] as String;
   final port = args['port'] as int;
   final expiresIn = args['expiresIn'] as int;
@@ -73,13 +85,19 @@ int startServer(Map args) {
     // git-lfs-server HOSTNAME PORT EXPIRES_IN TOKEN PATH
     Process.start('git-lfs-server',
             [hostname, port.toString(), expiresIn.toString(), token, path],
-            mode: ProcessStartMode.detached)
+            runInShell: true, mode: ProcessStartMode.detached)
+        .then((value) => {
+              _log.info('git-lfs-server started'),
+              sleep(Duration(seconds: 5)),
+              printOutput(args)
+            })
         .catchError((error) => error);
   } catch (e) {
     stderr.writeln('Error: $e');
-    return 1;
+    exitCode = 1;
+    return;
   }
 
-  printOutput(args);
-  return 0;
+  // printOutput(args);
+  exitCode = 0;
 }

@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:logging/logging.dart';
 
+import 'package:http_multi_server/http_multi_server.dart';
+import 'package:logging/logging.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart' as shelf_router;
@@ -32,14 +33,19 @@ Future main(List<String> args) async {
 
   final cascade = Cascade().add(_router);
 
-  final server = await shelf_io.serve(
-    logRequests().addHandler(cascade.handler),
-    InternetAddress.anyIPv4, // Allows external connections
-    _port,
-  );
+  final certPath =
+      Platform.environment['GIT_LFS_CERT'] ?? 'certificates/mine.cert';
+  final keyPath =
+      Platform.environment['GIT_LFS_KEY'] ?? 'certificates/mine.key';
+  var chain = Platform.script.resolve(certPath).toFilePath();
+  var key = Platform.script.resolve(keyPath).toFilePath();
+  var context = SecurityContext()
+    ..useCertificateChain(chain)
+    ..usePrivateKey(key);
+  var server = await HttpMultiServer.bindSecure('any', _port, context);
+  shelf_io.serveRequests(server, cascade.handler);
 
-  _log.info('Serving at http://${server.address.host}:${server.port}');
-  _log.info('Link will expire in $_expiresIn seconds');
+  _log.info('https://$_hostname:$_port will expire in $_expiresIn seconds');
   Timer(Duration(milliseconds: _expiresIn * 1000), () {
     _log.info('Shutting down');
     server.close();
@@ -47,17 +53,26 @@ Future main(List<String> args) async {
   }); // exit after _expiresIn seconds
 }
 
-late final Logger _log;
-late final String _hostname;
-late final int _port;
 late final int _expiresIn;
-late final String _token;
+late final String _hostname;
+late final Logger _log;
 late final String _path;
-
+late final int _port;
 // Router instance to handler requests.
 final _router = shelf_router.Router()
   ..post('/objects/batch', _batchHandler)
   ..get('/oid/<[a-fA-F0-9]+>', _oidHandler);
+
+late final String _token;
+
+Tuple2<bool, Response?> _authenticate(Request request) {
+  final auth = request.headers['Authorization'];
+  if (auth != 'Basic $_token') {
+    return Tuple2(false, Response.forbidden('Forbidden'));
+  }
+
+  return Tuple2(true, null);
+}
 
 Future<Response> _batchHandler(Request request) async {
   final authenticated = _authenticate(request);
@@ -128,7 +143,7 @@ Response _proceedBody(String body) {
         'download': {
           'expires_in': _expiresIn,
           'header': {'Authorization': 'Basic $_token'},
-          'href': 'http://$_hostname:$_port/oid/$oid',
+          'href': 'https://$_hostname:$_port/oid/$oid',
         },
       },
     });
@@ -142,15 +157,6 @@ Response _proceedBody(String body) {
       'Content-Type': 'application/vnd.git-lfs+json',
     },
   );
-}
-
-Tuple2<bool, Response?> _authenticate(Request request) {
-  final auth = request.headers['Authorization'];
-  if (auth != 'Basic $_token') {
-    return Tuple2(false, Response.forbidden('Forbidden'));
-  }
-
-  return Tuple2(true, null);
 }
 
 Tuple2<bool, Response?> _validateJson(dynamic json) {
