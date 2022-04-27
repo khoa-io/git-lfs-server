@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package authentication;
+
+// AuthenticationService allows `git-lfs-authenticate` registers a new Git LFS
+// client.
+service Authentication {
+  rpc Authenticate (AuthenticationRequest) returns (AuthenticationResponse) {}
+}
+
+// `git-lfs-authenticate PATH OPERATION` registers a new Git LFS client.
+message AuthenticationRequest {
+  /**
+   * The path to the bare repository.
+   * The LFS content must be stored in subdirectory `lfs` of this path, e.g.
+   * `/home/user/repo.git/lfs`.
+   * If the repository is a mirror, to fetch LFS content:
+   * `git --git-dir=PATH lfs fetch --all`.
+   */
+  string path = 1;
+  /**
+   * Git LFS operation: 'download' or 'upload'.
+   * Only `download` are supported.
+   */
+  string operation = 2;
+}
+
+message AuthenticationResponse {
+  enum Status {
+    SUCCESS = 0;
+    /**
+     * No such file or directory.
+     */
+    ENOENT = 2;
+    /**
+     * I/O error.
+     */
+    EIO = 5;
+    /**
+     * Resource temporarily unavailable
+     */
+    EAGAIN = 11;
+    /**
+     * Operation not supported
+     */
+    EOPNOTSUPP = 95;
+  }
+  Status status = 1;
+  /**
+   * If `status` is ERROR, this field contains the error message.
+   * If `status` is OK, this field contains a JSON string (See
+   * https://github.com/git-lfs/git-lfs/blob/main/docs/api/server-discovery.md#ssh).
+   *
+   * In both cases, after setting its exit code, `git-lfs-authenticate` writes
+   * the `message` to `stdout`.
+   */
+  string message = 2;
+}

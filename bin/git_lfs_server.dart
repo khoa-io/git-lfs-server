@@ -1,197 +1,69 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:http_multi_server/http_multi_server.dart';
+import 'package:git_lfs_server/authentication_service.dart';
+import 'package:git_lfs_server/git_lfs.dart' as lfs;
+import 'package:git_lfs_server/logging.dart' as lfs_logging;
+import 'package:git_lfs_server/http_server.dart';
+import 'package:grpc/grpc.dart';
 import 'package:logging/logging.dart';
-import 'package:shelf/shelf.dart';
-import 'package:shelf/shelf_io.dart' as shelf_io;
-import 'package:shelf_router/shelf_router.dart' as shelf_router;
-import 'package:tuple/tuple.dart';
 
-/// [args] must be "HOSTNAME PORT EXPIRES_IN TOKEN PATH"
-Future main(List<String> args) async {
-  if (args.length < 5) {
-    stderr.writeln('usage: git-lfs-server HOSTNAME PORT EXPIRES_IN TOKEN PATH');
-    exitCode = 1;
-    return;
+Future<int> onExit(lfs.StatusCode code) async {
+  if (code == lfs.StatusCode.success) {
+    _log.info('git-lfs-server has stopped peacefully.');
+  }
+  await lfs_logging.finalize();
+  return code.index;
+}
+
+void main() {
+  lfs_logging.initialize('git-lfs-server.log');
+  runZonedGuarded(() async {
+    await startServer();
+  }, (Object error, StackTrace stack) async {
+    final log = Logger('git-lfs-server');
+    log.severe('Unknown error!', error, stack);
+    exitCode = await onExit(lfs.StatusCode.errorUnknown);
+  });
+}
+
+final _log = Logger('git-lfs-server');
+
+Future<void> startServer() async {
+  final url = Platform.environment['GIT_LFS_SERVER_URL'];
+  if (url == null) {
+    _log.severe('GIT_LFS_SERVER_URL is not set!');
+    exit(await onExit(lfs.StatusCode.errorInvalidConfig));
   }
 
-  _hostname = args[0];
-  _port = int.parse(args[1]);
-  _expiresIn = int.parse(args[2]);
-  _token = args[3];
-  _path = args[4];
-  _log = Logger('git-lfs-server');
+  final certPath = Platform.environment['GIT_LFS_SERVER_CERT'];
+  final keyPath = Platform.environment['GIT_LFS_SERVER_KEY'];
+  if (certPath == null || keyPath == null) {
+    _log.severe('GIT_LFS_SERVER_CERT and GIT_LFS_SERVER_KEY are not set!');
+    exit(await onExit(lfs.StatusCode.errorInvalidConfig));
+  }
 
-  Logger.root.level = Level.ALL; // defaults to Level.INFO
-  Logger.root.onRecord.listen((record) {
-    var out = File('git-lfs-server.log').openWrite(mode: FileMode.append);
-    out.writeln('${record.level.name}: ${record.time}: ${record.message}');
-    out.close();
+  final udsa = InternetAddress(lfs.filelock, type: InternetAddressType.unix);
+  final authenticationService = Server([AuthenticationService(url)]);
+  await authenticationService.serve(address: udsa);
+
+  _log.info('AuthenticationService has started.');
+
+  ProcessSignal.sigint.watch().listen((signal) {
+    authenticationService.shutdown().whenComplete(() async => {
+          _log.info('AuthenticationService has stopped.'),
+          exit(await onExit(lfs.StatusCode.success))
+        });
   });
 
-  final cascade = Cascade().add(_router);
-
-  final certPath =
-      Platform.environment['GIT_LFS_CERT'] ?? 'certificates/mine.cert';
-  final keyPath =
-      Platform.environment['GIT_LFS_KEY'] ?? 'certificates/mine.key';
-  var chain = Platform.script.resolve(certPath).toFilePath();
-  var key = Platform.script.resolve(keyPath).toFilePath();
-  var context = SecurityContext()
-    ..useCertificateChain(chain)
-    ..usePrivateKey(key);
-  var server = await HttpMultiServer.bindSecure('any', _port, context);
-  shelf_io.serveRequests(server, cascade.handler);
-
-  _log.info('https://$_hostname:$_port will expire in $_expiresIn seconds');
-  Timer(Duration(milliseconds: _expiresIn * 1000), () {
-    _log.info('Shutting down');
-    server.close();
-    exit(0);
-  }); // exit after _expiresIn seconds
-}
-
-late final int _expiresIn;
-late final String _hostname;
-late final Logger _log;
-late final String _path;
-late final int _port;
-// Router instance to handler requests.
-final _router = shelf_router.Router()
-  ..post('/objects/batch', _batchHandler)
-  ..get('/oid/<[a-fA-F0-9]+>', _oidHandler);
-
-late final String _token;
-
-Tuple2<bool, Response?> _authenticate(Request request) {
-  final auth = request.headers['Authorization'];
-  if (auth != 'Basic $_token') {
-    return Tuple2(false, Response.forbidden('Forbidden'));
-  }
-
-  return Tuple2(true, null);
-}
-
-Future<Response> _batchHandler(Request request) async {
-  final authenticated = _authenticate(request);
-  if (!authenticated.item1) {
-    return authenticated.item2!;
-  }
-
-  final Response response = _proceedBody(await request.readAsString());
-
-  return response;
-}
-
-Response _oidHandler(Request request, String oid) {
-  final authenticated = _authenticate(request);
-  if (!authenticated.item1) {
-    return authenticated.item2!;
-  }
-
-  final first = oid.substring(0, 2);
-  final second = oid.substring(2, 4);
-  final file = File('$_path/lfs/objects/$first/$second/$oid');
-  if (!file.existsSync()) {
-    return Response.internalServerError(body: 'Object not found');
-  }
-
-  final bytes = file.readAsBytesSync();
-  final headers = {
-    'Content-Type': 'application/octet-stream',
-    'Content-Length': bytes.length.toString(),
-  };
-
-  return Response.ok(bytes, headers: headers);
-}
-
-Response _proceedBody(String body) {
-  final json = jsonDecode(body);
-
-  Tuple2<bool, Response?> result = _validateJson(json);
-
-  if (!result.item1) {
-    return result.item2!;
-  }
-
-  final objects = json['objects'] as List;
-  var responseObjects = <Map>[];
-
-  for (final object in objects) {
-    final oid = object['oid'] as String;
-    final size = object['size'] as int;
-
-    final first = oid.substring(0, 2);
-    final second = oid.substring(2, 4);
-    final file = File('$_path/lfs/objects/$first/$second/$oid');
-    if (!file.existsSync()) {
-      return Response.notFound('Not found');
-    }
-
-    final content = file.readAsBytesSync();
-    if (content.length != size) {
-      return Response.internalServerError(body: 'Internal server error');
-    }
-
-    responseObjects.add({
-      'oid': oid,
-      'size': size,
-      'authenticated': true,
-      'actions': {
-        'download': {
-          'expires_in': _expiresIn,
-          'header': {'Authorization': 'Basic $_token'},
-          'href': 'https://$_hostname:$_port/oid/$oid',
-        },
-      },
-    });
-  }
-
-  final response = {'transfer': 'basic', 'objects': responseObjects};
-
-  return Response.ok(
-    const JsonEncoder.withIndent(' ').convert(response),
-    headers: {
-      'Content-Type': 'application/vnd.git-lfs+json',
-    },
-  );
-}
-
-Tuple2<bool, Response?> _validateJson(dynamic json) {
-  if (json is! Map) {
-    return Tuple2<bool, Response>(
-        false, Response.badRequest(body: 'Invalid JSON'));
-  }
-
-  if (!json.containsKey('operation')) {
-    return Tuple2<bool, Response>(
-        false, Response.badRequest(body: 'Missing operation'));
-  }
-
-  if (json['operation'] != 'download') {
-    // TODO: support upload
-    return Tuple2<bool, Response>(
-        false, Response.badRequest(body: 'Invalid operation'));
-  }
-
-  if (!json.containsKey('objects')) {
-    return Tuple2<bool, Response>(
-        false, Response.badRequest(body: 'Missing objects'));
-  }
-
-  final objects = json['objects'] as List;
-  for (final object in objects) {
-    if (!object.containsKey('oid')) {
-      return Tuple2<bool, Response>(
-          false, Response.badRequest(body: 'Missing oid'));
-    }
-    if (!object.containsKey('size')) {
-      return Tuple2<bool, Response>(
-          false, Response.badRequest(body: 'Missing size'));
-    }
-  }
-
-  return Tuple2<bool, Response?>(true, null);
+  // final uri = Uri.parse(url);
+  // final hostname = uri.host;
+  // final port = uri.port;
+  // final chain = Platform.script.resolve(certPath).toFilePath();
+  // final key = Platform.script.resolve(keyPath).toFilePath();
+  // final context = SecurityContext()
+  //   ..useCertificateChain(chain)
+  //   ..usePrivateKey(key);
+  // final server = GitLfsServer(hostname, port, context);
+  // server.start();
 }
