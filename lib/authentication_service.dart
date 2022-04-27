@@ -45,7 +45,7 @@ class AuthenticationService extends AuthenticationServiceBase {
       _log.severe('Failed to generate token!');
       return AuthenticationResponse()
         ..status = AuthenticationResponse_Status.EIO
-        ..message = 'Cannot authenticate';
+        ..message = 'I/O error';
     }
 
     final response = AuthenticationResponse()
