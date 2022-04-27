@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:git_lfs_server/git_lfs.dart' as lfs;
@@ -8,38 +7,42 @@ import 'package:git_lfs_server/src/generated/authentication.pbgrpc.dart';
 import 'package:grpc/grpc.dart';
 import 'package:logging/logging.dart';
 
+void main(List<String> args) {
+  lfs_logging.initialize('git-lfs-authenticate.log');
+  runZonedGuarded(() async {
+    await startAuthenticate(args);
+  }, (Object error, StackTrace stack) async {
+    final log = Logger('git-lfs-authentication');
+    log.severe('Unknown error!', error, stack);
+    exit(await onExit(lfs.StatusCode.errorUnknown));
+  });
+}
+
+late final ClientChannel? _channel;
+final Logger _log = Logger('git-lfs-authenticate');
+
 Future<int> onExit(lfs.StatusCode code) async {
   if (code == lfs.StatusCode.success) {
     _log.info('git-lfs-authenticate has stopped peacefully.');
   }
-  lfs_logging.finalize();
+  await lfs_logging.finalize();
+  await _channel?.shutdown();
   return code.index;
 }
 
-void main(List<String> args) {
-  lfs_logging.initialize('git-lfs-authenticate.log');
-  runZonedGuarded(() async {
-    exitCode = await startAuthenticate(args);
-  }, (Object error, StackTrace stack) async {
-    final log = Logger('git-lfs-authentication');
-    log.severe('Unknown error!', error, stack);
-    exitCode = await onExit(lfs.StatusCode.errorUnknown);
-  });
-}
-
-Future<int> startAuthenticate(List<String> args) async {
+Future<void> startAuthenticate(List<String> args) async {
   if (args.length < 2) {
     _log.severe('Usage: git-lfs-authenticate {path} {operation}');
     exit(await onExit(lfs.StatusCode.errorInvalidArgument));
   }
 
   final udsa = InternetAddress(lfs.filelock, type: InternetAddressType.unix);
-  final channel = ClientChannel(
+  _channel = ClientChannel(
     udsa,
     port: 0,
     options: const ChannelOptions(credentials: ChannelCredentials.insecure()),
   );
-  final stub = AuthenticationClient(channel);
+  final stub = AuthenticationClient(_channel!);
 
   try {
     final request = AuthenticationRequest()
@@ -56,10 +59,6 @@ Future<int> startAuthenticate(List<String> args) async {
     }
   } catch (e) {
     _log.severe('Failed to authenticate!', e);
+    exit(await onExit(lfs.StatusCode.errorUnknown));
   }
-  await channel.shutdown();
-
-  return onExit(lfs.StatusCode.success);
 }
-
-final Logger _log = Logger('git-lfs-authenticate');
