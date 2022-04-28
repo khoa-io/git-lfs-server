@@ -1,35 +1,19 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 
-import 'package:git_lfs_server/authentication_service.dart';
+import 'package:git_lfs_server/authentication_service.dart' show authService;
 import 'package:git_lfs_server/git_lfs.dart' as lfs;
-import 'package:git_lfs_server/logging.dart' as lfs_logging;
-import 'package:git_lfs_server/http_server.dart';
-import 'package:grpc/grpc.dart';
+import 'package:git_lfs_server/logging.dart' show onRecordServer;
 import 'package:logging/logging.dart';
 
-Future<int> onExit(lfs.StatusCode code) async {
-  if (code == lfs.StatusCode.success) {
-    _log.info('git-lfs-server has stopped peacefully.');
+Future<void> main(List<String> args) async {
+  if (args.isNotEmpty) {
+    if (args[0] == '--debug') {
+      Logger.root.level = Level.ALL;
+    }
   }
-  await lfs_logging.finalize();
-  return code.index;
-}
-
-void main() {
-  lfs_logging.initialize('git-lfs-server.log');
-  runZonedGuarded(() async {
-    await startServer();
-  }, (Object error, StackTrace stack) async {
-    final log = Logger('git-lfs-server');
-    log.severe('Unknown error!', error, stack);
-    exitCode = await onExit(lfs.StatusCode.errorUnknown);
-  });
-}
-
-final _log = Logger('git-lfs-server');
-
-Future<void> startServer() async {
+  _log.info('$_tag has started!');
   final url = Platform.environment['GIT_LFS_SERVER_URL'];
   if (url == null) {
     _log.severe('GIT_LFS_SERVER_URL is not set!');
@@ -43,19 +27,58 @@ Future<void> startServer() async {
     exit(await onExit(lfs.StatusCode.errorInvalidConfig));
   }
 
-  final udsa = InternetAddress(lfs.filelock, type: InternetAddressType.unix);
-  final authenticationService = Server([AuthenticationService(url)]);
-  await authenticationService.serve(address: udsa);
+  // Receives data from git-lfs-auth-service (1-way)
+  final portAuthData = ReceivePort();
+  // Receive port/nude from and send nude to git-lfs-auth-service
+  final portAuthCmd = ReceivePort();
 
-  _log.info('AuthenticationService has started.');
+  _log.fine('Attempt to start $_authServiceTag');
+  var authServiceStopped = false;
+  final isolate = await Isolate.spawn(
+      authService, [portAuthData.sendPort, portAuthCmd.sendPort, url]);
+  isolate.addOnExitListener(portAuthCmd.sendPort);
 
-  ProcessSignal.sigint.watch().listen((signal) {
-    authenticationService.shutdown().whenComplete(() async => {
-          _log.info('AuthenticationService has stopped.'),
-          exit(await onExit(lfs.StatusCode.success))
-        });
+  // Used to tell git-lfs-auth-service to shutdown later
+  late final SendPort sendPortAuthCmd;
+
+  portAuthData.listen((message) {
+    // TODO: Fordward this message to git-lfs-http-server
+    _log.fine('Received data from $_authServiceTag: $message.');
   });
 
+  portAuthCmd.listen((msg) {
+    if (msg is SendPort) {
+      _log.fine('$_authServiceTag gives us a port to command it.');
+      sendPortAuthCmd = msg;
+    } else if (msg == null) {
+      _log.info('$_authServiceTag has stopped!');
+      authServiceStopped = true;
+      isolate.removeOnExitListener(portAuthCmd.sendPort);
+    } else {
+      _log.warning('Unexpected message from $_authServiceTag: $msg.');
+    }
+  });
+
+  // Wait for SIGINT
+  var sigintCounter = 0;
+  ProcessSignal.sigint.watch().listen((signal) async {
+    sigintCounter++;
+
+    if (sigintCounter == 1) {
+      _log.fine('Attempt to shutdown git-lfs-auth-service');
+      sendPortAuthCmd.send(null);
+
+      // TODO: Attempt to shutdown git-lfs-http-server here
+    } else if (sigintCounter > 2) {
+      if (authServiceStopped) {
+        exit(await onExit(lfs.StatusCode.success));
+      } else {
+        exit(await onExit(lfs.StatusCode.errorUnknown));
+      }
+    }
+  });
+
+  // TODO: Start git-lfs-http-server here
   // final uri = Uri.parse(url);
   // final hostname = uri.host;
   // final port = uri.port;
@@ -66,4 +89,17 @@ Future<void> startServer() async {
   //   ..usePrivateKey(key);
   // final server = GitLfsServer(hostname, port, context);
   // server.start();
+}
+
+final Logger _log = Logger(_tag)..onRecord.listen(onRecordServer);
+final _tag = 'git-lfs-server';
+final _authServiceTag = 'git-lfs-auth-service';
+
+Future<int> onExit(lfs.StatusCode code) async {
+  if (code == lfs.StatusCode.success) {
+    _log.info('$_tag has stopped peacefully.');
+  } else {
+    _log.info('$_tag has been forced to stop!');
+  }
+  return code.index;
 }

@@ -1,20 +1,58 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
+import 'package:git_lfs_server/git_lfs.dart' as lfs;
+import 'package:git_lfs_server/logging.dart' show onRecordServer;
 import 'package:git_lfs_server/src/generated/authentication.pbgrpc.dart';
 import 'package:grpc/grpc.dart';
 import 'package:logging/logging.dart';
 
 import 'git_lfs.dart';
 
-final Logger _log = Logger('AuthenticationService');
+final Logger _log = Logger(_tag)..onRecord.listen(onRecordServer);
+
+final _tag = 'git-lfs-auth-service';
+
+Future<void> authService(List<dynamic> args) async {
+  if (args.length < 3) {
+    _log.severe('Missing arguments!');
+    return;
+  }
+
+  final sendPortData = args[0] as SendPort;
+  final sendPortCmd = args[1] as SendPort;
+  final url = args[2] as String;
+
+  final udsa = InternetAddress(lfs.filelock, type: InternetAddressType.unix);
+  final service = AuthenticationService(url, sendPortData);
+  final server = Server([service]);
+  server.serve(address: udsa);
+  _log.info('$_tag has started.');
+
+  sendPortCmd.send(service.receivePortCmd.sendPort);
+
+  // git-lfs-server only sends nude to shutdown git-lfs-auth-service
+  await service.receivePortCmd.first;
+
+  _log.fine('$_tag is shutting down.');
+  await server.shutdown();
+  _log.info('$_tag has shutdown.');
+  Isolate.exit();
+}
 
 class AuthenticationService extends AuthenticationServiceBase {
   /// The URL at which Git LFS Server is serving.
   /// For example: https://localhost:8080
   final String _url;
 
-  AuthenticationService(this._url);
+  /// To send data to main
+  final SendPort _sendPortData;
+
+  /// To receive commands from main
+  final receivePortCmd = ReceivePort();
+
+  AuthenticationService(this._url, this._sendPortData);
 
   @override
   Future<AuthenticationResponse> authenticate(
@@ -53,12 +91,13 @@ class AuthenticationService extends AuthenticationServiceBase {
       ..message = jsonEncode({
         'href': _url,
         'header': {
-          'Authorization': 'Basic $token',
+          'Authorization': 'RemoteAuth $token',
         },
         'expires_in': expiresIn,
       });
 
-    _log.info('Successfully authenticated: $response');
+    _sendPortData.send({'path': request.path, 'token': token});
+    _log.info('Successfully authenticated for ${request.path} $response');
     return response;
   }
 }

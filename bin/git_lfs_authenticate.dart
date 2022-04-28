@@ -8,7 +8,6 @@ import 'package:grpc/grpc.dart';
 import 'package:logging/logging.dart';
 
 void main(List<String> args) {
-  lfs_logging.initialize('git-lfs-authenticate.log');
   runZonedGuarded(() async {
     await startAuthenticate(args);
   }, (Object error, StackTrace stack) async {
@@ -19,13 +18,26 @@ void main(List<String> args) {
 }
 
 late final ClientChannel? _channel;
-final Logger _log = Logger('git-lfs-authenticate');
+final Logger _log = Logger(_tag)
+  ..onRecord.listen((record) {
+    final msg = StringBuffer(
+        '[${record.level.name}] [${record.time}] [${record.loggerName}] [${record.message}]');
+
+    if (record.error != null) {
+      msg.write('[${record.error}]');
+    }
+    if (record.stackTrace != null) {
+      msg.write('[${record.stackTrace}]');
+    }
+
+    stderr.writeln(msg);
+  });
+final _tag = 'git-lfs-authenticate';
 
 Future<int> onExit(lfs.StatusCode code) async {
   if (code == lfs.StatusCode.success) {
-    _log.info('git-lfs-authenticate has stopped peacefully.');
+    _log.info('$_tag has stopped peacefully.');
   }
-  await lfs_logging.finalize();
   await _channel?.shutdown();
   return code.index;
 }
