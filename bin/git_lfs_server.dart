@@ -13,7 +13,9 @@ Future<void> main(List<String> args) async {
       Logger.root.level = Level.ALL;
     }
   }
+
   _log.info('$_tag has started!');
+
   final url = Platform.environment['GIT_LFS_SERVER_URL'];
   if (url == null) {
     _log.severe('GIT_LFS_SERVER_URL is not set!');
@@ -29,7 +31,7 @@ Future<void> main(List<String> args) async {
 
   // Receives data from git-lfs-auth-service (1-way)
   final portAuthData = ReceivePort();
-  // Receive port/nude from and send nude to git-lfs-auth-service
+  // Receive port/null from and send null to git-lfs-auth-service
   final portAuthCmd = ReceivePort();
 
   _log.fine('Attempt to start $_authServiceTag');

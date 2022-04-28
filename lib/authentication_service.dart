@@ -32,7 +32,7 @@ Future<void> authService(List<dynamic> args) async {
 
   sendPortCmd.send(service.receivePortCmd.sendPort);
 
-  // git-lfs-server only sends nude to shutdown git-lfs-auth-service
+  // git-lfs-server only sends null to shutdown git-lfs-auth-service
   await service.receivePortCmd.first;
 
   _log.fine('$_tag is shutting down.');
