@@ -5,11 +5,14 @@ package authentication;
 // AuthenticationService allows `git-lfs-authenticate` registers a new Git LFS
 // client.
 service Authentication {
-  rpc Authenticate (AuthenticationRequest) returns (AuthenticationResponse) {}
+  // Register registers a new client.
+  rpc GenerateToken (RegistrationForm) returns (RegistrationReply) {}
+  // Authenticate a client with a token.
+  rpc VerifyToken (AuthenticationForm) returns (AuthenticationReply) {}
 }
 
 // `git-lfs-authenticate PATH OPERATION` registers a new Git LFS client.
-message AuthenticationRequest {
+message RegistrationForm {
   /**
    * The path to the bare repository.
    * The LFS content must be stored in subdirectory `lfs` of this path, e.g.
@@ -25,7 +28,7 @@ message AuthenticationRequest {
   string operation = 2;
 }
 
-message AuthenticationResponse {
+message RegistrationReply {
   enum Status {
     SUCCESS = 0;
     /**
@@ -55,4 +58,14 @@ message AuthenticationResponse {
    * the `message` to `stdout`.
    */
   string message = 2;
+}
+
+message AuthenticationForm {
+  string token = 1;
+}
+
+message AuthenticationReply {
+  bool success = 1;
+  // The path associated with the token.
+  string path = 2;
 }

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:git_lfs_server/authentication_service.dart' show authService;
+import 'package:git_lfs_server/auth/auth_service.dart' show authService;
 import 'package:git_lfs_server/git_lfs.dart' as lfs;
 import 'package:git_lfs_server/logging.dart' show onRecordServer;
 import 'package:logging/logging.dart';
@@ -50,7 +50,7 @@ Future<void> main(List<String> args) async {
 
   portAuthCmd.listen((msg) {
     if (msg is SendPort) {
-      _log.fine('$_authServiceTag gives us a port to command it.');
+      _log.fine('$_authServiceTag gave us a port to command it.');
       sendPortAuthCmd = msg;
     } else if (msg == null) {
       _log.info('$_authServiceTag has stopped!');

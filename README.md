@@ -17,6 +17,10 @@ In case your Git repository is a mirror of another (which supports Git LFS), you
 - `GIT_LFS_SERVER_CERT`: The path to the certificate file.
 - `GIT_LFS_SERVER_KEY`: The path to the key file.
 
+# Dependencies
+
+- pwgen
+
 # Usage
 
 Generate a key pair: `openssl req -x509 -sha256 -nodes -days 2100 -newkey rsa:2048 -keyout mine.key -out mine.crt`

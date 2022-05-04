@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:git_lfs_server/git_lfs.dart' as lfs;
-import 'package:git_lfs_server/logging.dart' as lfs_logging;
 import 'package:git_lfs_server/src/generated/authentication.pbgrpc.dart';
 import 'package:grpc/grpc.dart';
 import 'package:logging/logging.dart';
@@ -57,12 +56,12 @@ Future<void> startAuthenticate(List<String> args) async {
   final stub = AuthenticationClient(_channel!);
 
   try {
-    final request = AuthenticationRequest()
+    final request = RegistrationForm()
       ..path = args[0]
       ..operation = args[1];
-    final response = await stub.authenticate(request);
+    final response = await stub.generateToken(request);
     switch (response.status) {
-      case AuthenticationResponse_Status.SUCCESS:
+      case RegistrationReply_Status.SUCCESS:
         print(response.message);
         exit(await onExit(lfs.StatusCode.success));
       default:

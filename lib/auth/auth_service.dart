@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -5,15 +6,16 @@ import 'dart:isolate';
 import 'package:git_lfs_server/git_lfs.dart' as lfs;
 import 'package:git_lfs_server/logging.dart' show onRecordServer;
 import 'package:git_lfs_server/src/generated/authentication.pbgrpc.dart';
-import 'package:grpc/grpc.dart';
+import 'package:grpc/grpc.dart' show Server, ServiceCall;
 import 'package:logging/logging.dart';
 
-import 'git_lfs.dart';
+import '../git_lfs.dart';
 
 final Logger _log = Logger(_tag)..onRecord.listen(onRecordServer);
 
 final _tag = 'git-lfs-auth-service';
 
+/// auth-service must run on an isolate.
 Future<void> authService(List<dynamic> args) async {
   if (args.length < 3) {
     _log.severe('Missing arguments!');
@@ -25,7 +27,7 @@ Future<void> authService(List<dynamic> args) async {
   final url = args[2] as String;
 
   final udsa = InternetAddress(lfs.filelock, type: InternetAddressType.unix);
-  final service = AuthenticationService(url, sendPortData);
+  final service = _AuthenticationService(url, sendPortData);
   final server = Server([service]);
   server.serve(address: udsa);
   _log.info('$_tag has started.');
@@ -41,10 +43,19 @@ Future<void> authService(List<dynamic> args) async {
   Isolate.exit();
 }
 
-class AuthenticationService extends AuthenticationServiceBase {
+class _AuthenticationService extends AuthenticationServiceBase {
   /// The URL at which Git LFS Server is serving.
   /// For example: https://localhost:8080
   final String _url;
+
+  /// The number of seconds before a token expires.
+  final int _expiresIn =
+      Platform.environment['GIT_LFS_SERVER_EXPIRES_IN'] == null
+          ? lfs.defaultExpiresIn
+          : int.parse(Platform.environment['GIT_LFS_SERVER_EXPIRES_IN']!);
+
+  /// Each token is associated with a path.
+  final Map<String, String> _mapTokenPath = {};
 
   /// To send data to main
   final SendPort _sendPortData;
@@ -52,24 +63,24 @@ class AuthenticationService extends AuthenticationServiceBase {
   /// To receive commands from main
   final receivePortCmd = ReceivePort();
 
-  AuthenticationService(this._url, this._sendPortData);
+  _AuthenticationService(this._url, this._sendPortData);
 
   @override
-  Future<AuthenticationResponse> authenticate(
-      ServiceCall call, AuthenticationRequest request) async {
+  Future<RegistrationReply> generateToken(
+      ServiceCall call, RegistrationForm request) async {
     if (request.operation != Operation.download.name) {
       _log.warning('Unsupported operation: ${request.operation}');
-      // Only operation 'download' is supported
-      return AuthenticationResponse()
-        ..status = AuthenticationResponse_Status.EOPNOTSUPP
+      // TODO: Only operation 'download' is supported for now
+      return RegistrationReply()
+        ..status = RegistrationReply_Status.EOPNOTSUPP
         ..message = 'Invalid LFS operation ${request.operation}';
     }
 
     final repoDirectory = Directory(request.path);
     if (!repoDirectory.existsSync()) {
       _log.warning('File not found: ${request.path}');
-      return AuthenticationResponse()
-        ..status = AuthenticationResponse_Status.ENOENT
+      return RegistrationReply()
+        ..status = RegistrationReply_Status.ENOENT
         ..message = 'No such file or directory';
     }
 
@@ -81,13 +92,14 @@ class AuthenticationService extends AuthenticationServiceBase {
 
     if (token.length != 25) {
       _log.severe('Failed to generate token!');
-      return AuthenticationResponse()
-        ..status = AuthenticationResponse_Status.EIO
+      return RegistrationReply()
+        ..status = RegistrationReply_Status.EIO
         ..message = 'I/O error';
     }
 
-    final response = AuthenticationResponse()
-      ..status = AuthenticationResponse_Status.SUCCESS
+    _addToken(token, request.path);
+    final response = RegistrationReply()
+      ..status = RegistrationReply_Status.SUCCESS
       ..message = jsonEncode({
         'href': _url,
         'header': {
@@ -97,7 +109,30 @@ class AuthenticationService extends AuthenticationServiceBase {
       });
 
     _sendPortData.send({'path': request.path, 'token': token});
-    _log.info('Successfully authenticated for ${request.path} $response');
+    _log.fine('Successfully authenticated for ${request.path} $response');
     return response;
+  }
+
+  @override
+  Future<AuthenticationReply> verifyToken(
+      ServiceCall call, AuthenticationForm request) async {
+    if (!_mapTokenPath.keys.contains(request.token)) {
+      _log.fine('Token "${request.token}" is invalid or expired.');
+      // Token is invalid or expired
+      return AuthenticationReply()
+        ..success = false
+        ..path = 'Not a path!';
+    }
+
+    final path = _mapTokenPath[request.token]!;
+    _log.fine('Token "${request.token}" is valid for $path.');
+    return AuthenticationReply()
+      ..success = true
+      ..path = path;
+  }
+
+  void _addToken(String token, String path) {
+    _mapTokenPath[token] = path;
+    Timer(Duration(seconds: _expiresIn), () => _mapTokenPath.remove(token));
   }
 }
