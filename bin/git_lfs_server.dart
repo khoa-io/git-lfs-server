@@ -9,10 +9,8 @@ import 'package:git_lfs_server/logging.dart' show onRecordServer;
 import 'package:logging/logging.dart';
 
 Future<void> main(List<String> args) async {
-  if (args.isNotEmpty) {
-    if (args[0] == '--debug') {
-      Logger.root.level = Level.ALL;
-    }
+  if (Platform.environment['GIT_LFS_SERVER_TRACE'] != null) {
+    Logger.root.level = Level.ALL;
   }
 
   _log.info('$_tag has started!');

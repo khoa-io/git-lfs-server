@@ -17,7 +17,9 @@ final _tag = 'git-lfs-auth-service';
 
 /// auth-service must run on an isolate.
 Future<void> authService(List<dynamic> args) async {
-  Logger.root.level = Level.ALL;
+  if (Platform.environment['GIT_LFS_SERVER_TRACE'] != null) {
+    Logger.root.level = Level.ALL;
+  }
   if (args.length < 3) {
     _log.severe('Missing arguments!');
     return;

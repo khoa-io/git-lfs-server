@@ -36,7 +36,9 @@ class GitLfsHttpServer {
 
   Future<void> start() async {
     _log = Logger(tag);
-    Logger.root.level = Level.ALL;
+    if (Platform.environment['GIT_LFS_SERVER_TRACE'] != null) {
+      Logger.root.level = Level.ALL;
+    }
     _router = shelf_router.Router()
       ..post('/objects/batch', _batchHandler)
       ..get('/download/<[a-zA-Z0-9]{25}>/<[a-zA-Z0-9]{64}>', _downloadHandler);
