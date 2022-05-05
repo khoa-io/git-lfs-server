@@ -204,7 +204,6 @@ class GitLfsHttpServer {
 
     if (json['operation'] != Operation.download.name) {
       // Only 'download' operation is supported.
-      // TODO: Support 'upload'.
       return Response.badRequest(body: 'Invalid operation');
     }
 

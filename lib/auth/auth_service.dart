@@ -71,7 +71,6 @@ class _AuthenticationService extends AuthenticationServiceBase {
       ServiceCall call, RegistrationForm request) async {
     if (request.operation != Operation.download.name) {
       _log.warning('Unsupported operation: ${request.operation}');
-      // TODO: Only operation 'download' is supported for now
       return RegistrationReply()
         ..status = RegistrationReply_Status.EOPNOTSUPP
         ..message = 'Invalid LFS operation ${request.operation}';
