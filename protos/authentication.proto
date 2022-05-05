@@ -66,6 +66,9 @@ message AuthenticationForm {
 
 message AuthenticationReply {
   bool success = 1;
+  string token = 2;
   // The path associated with the token.
-  string path = 2;
+  string path = 3;
+  // The number of seconds before the token expires.
+  uint32 expiresIn = 4;
 }

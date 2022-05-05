@@ -185,21 +185,31 @@ class AuthenticationForm extends $pb.GeneratedMessage {
 class AuthenticationReply extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(const $core.bool.fromEnvironment('protobuf.omit_message_names') ? '' : 'AuthenticationReply', package: const $pb.PackageName(const $core.bool.fromEnvironment('protobuf.omit_message_names') ? '' : 'authentication'), createEmptyInstance: create)
     ..aOB(1, const $core.bool.fromEnvironment('protobuf.omit_field_names') ? '' : 'success')
-    ..aOS(2, const $core.bool.fromEnvironment('protobuf.omit_field_names') ? '' : 'path')
+    ..aOS(2, const $core.bool.fromEnvironment('protobuf.omit_field_names') ? '' : 'token')
+    ..aOS(3, const $core.bool.fromEnvironment('protobuf.omit_field_names') ? '' : 'path')
+    ..a<$core.int>(4, const $core.bool.fromEnvironment('protobuf.omit_field_names') ? '' : 'expiresIn', $pb.PbFieldType.OU3, protoName: 'expiresIn')
     ..hasRequiredFields = false
   ;
 
   AuthenticationReply._() : super();
   factory AuthenticationReply({
     $core.bool? success,
+    $core.String? token,
     $core.String? path,
+    $core.int? expiresIn,
   }) {
     final _result = create();
     if (success != null) {
       _result.success = success;
     }
+    if (token != null) {
+      _result.token = token;
+    }
     if (path != null) {
       _result.path = path;
+    }
+    if (expiresIn != null) {
+      _result.expiresIn = expiresIn;
     }
     return _result;
   }
@@ -234,12 +244,30 @@ class AuthenticationReply extends $pb.GeneratedMessage {
   void clearSuccess() => clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get path => $_getSZ(1);
+  $core.String get token => $_getSZ(1);
   @$pb.TagNumber(2)
-  set path($core.String v) { $_setString(1, v); }
+  set token($core.String v) { $_setString(1, v); }
   @$pb.TagNumber(2)
-  $core.bool hasPath() => $_has(1);
+  $core.bool hasToken() => $_has(1);
   @$pb.TagNumber(2)
-  void clearPath() => clearField(2);
+  void clearToken() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get path => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set path($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasPath() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPath() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get expiresIn => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set expiresIn($core.int v) { $_setUnsignedInt32(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasExpiresIn() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearExpiresIn() => clearField(4);
 }
 

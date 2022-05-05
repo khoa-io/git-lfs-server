@@ -58,9 +58,11 @@ const AuthenticationReply$json = const {
   '1': 'AuthenticationReply',
   '2': const [
     const {'1': 'success', '3': 1, '4': 1, '5': 8, '10': 'success'},
-    const {'1': 'path', '3': 2, '4': 1, '5': 9, '10': 'path'},
+    const {'1': 'token', '3': 2, '4': 1, '5': 9, '10': 'token'},
+    const {'1': 'path', '3': 3, '4': 1, '5': 9, '10': 'path'},
+    const {'1': 'expiresIn', '3': 4, '4': 1, '5': 13, '10': 'expiresIn'},
   ],
 };
 
 /// Descriptor for `AuthenticationReply`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List authenticationReplyDescriptor = $convert.base64Decode('ChNBdXRoZW50aWNhdGlvblJlcGx5EhgKB3N1Y2Nlc3MYASABKAhSB3N1Y2Nlc3MSEgoEcGF0aBgCIAEoCVIEcGF0aA==');
+final $typed_data.Uint8List authenticationReplyDescriptor = $convert.base64Decode('ChNBdXRoZW50aWNhdGlvblJlcGx5EhgKB3N1Y2Nlc3MYASABKAhSB3N1Y2Nlc3MSFAoFdG9rZW4YAiABKAlSBXRva2VuEhIKBHBhdGgYAyABKAlSBHBhdGgSHAoJZXhwaXJlc0luGAQgASgNUglleHBpcmVzSW4=');
