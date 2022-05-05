@@ -45,6 +45,7 @@ Future<void> main(List<String> args) async {
 
   portAuthData.listen((message) {
     // TODO: Fordward this message to git-lfs-http-server
+    // TODO: auth-service and git-lfs-http-server communiate directly so don't forward
     _log.fine('Received data from $_authServiceTag: $message.');
   });
 
@@ -69,8 +70,6 @@ Future<void> main(List<String> args) async {
     if (sigintCounter == 1) {
       _log.fine('Attempt to shutdown git-lfs-auth-service');
       sendPortAuthCmd.send(null);
-
-      // TODO: Attempt to shutdown git-lfs-http-server here
     } else if (sigintCounter > 2) {
       if (authServiceStopped) {
         exit(await onExit(lfs.StatusCode.success));
