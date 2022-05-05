@@ -1,9 +1,12 @@
 #!/bin/bash
 
-echo "https://$1/objects/batch"
-curl --insecure https://$1/objects/batch \
+host_port=$1
+auth_token=$2
+
+echo "https://$host_port/objects/batch"
+curl --insecure https://$host_port/objects/batch \
 -X POST \
 -H "Accept: application/vnd.git-lfs+json" \
 -H "Content-Type: application/vnd.git-lfs+json" \
--H "Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=" \
+-H "Authorization: Basic $auth_token" \
 -d @test/data/download.json

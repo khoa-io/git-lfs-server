@@ -17,6 +17,7 @@ final _tag = 'git-lfs-auth-service';
 
 /// auth-service must run on an isolate.
 Future<void> authService(List<dynamic> args) async {
+  Logger.root.level = Level.ALL;
   if (args.length < 3) {
     _log.severe('Missing arguments!');
     return;
@@ -125,9 +126,10 @@ class _AuthenticationService extends AuthenticationServiceBase {
     }
 
     final path = _mapTokenPath[request.token]!;
-    _log.fine('Token "${request.token}" is valid for $path.');
+    _log.fine('Token "${request.token}" is valid for "$path."');
     return AuthenticationReply()
       ..success = true
+      ..expiresIn = _expiresIn
       ..path = path;
   }
 

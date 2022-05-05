@@ -15,27 +15,32 @@ import 'package:tuple/tuple.dart';
 import '../git_lfs.dart';
 
 class GitLfsHttpServer {
-  final String _hostname;
-  final int _port;
-  final SecurityContext _context;
+  final tag = 'git-lfs-http-server';
   late final Logger _log;
+
   late final ClientChannel? _channel;
   late final AuthenticationClient _authClient;
 
   /// Router instance to handler requests.
   ///
   /// - `/objects/batch`: https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md.
-  /// - `/download/{OID}` (`{OID}` is a hexadecimal string (regex: `<[a-fA-F0-9]+>`)): download the object.
+  /// - `/download/{TOKEN}/{OID}`: download the object has checksum `{OID}` (SHA256).
   late final shelf_router.Router _router;
 
+  final String _hostname;
+  final int _port;
+  final SecurityContext _context;
   late final HttpServer _server;
-  GitLfsHttpServer(this._hostname, this._port, this._context) {
-    _router = shelf_router.Router()
-      ..post('/objects/batch', _batchHandler)
-      ..get('/download/<[a-fA-F0-9]+>', _downloadHandler);
-  }
+
+  GitLfsHttpServer(this._hostname, this._port, this._context);
 
   Future<void> start() async {
+    _log = Logger(tag);
+    Logger.root.level = Level.ALL;
+    _router = shelf_router.Router()
+      ..post('/objects/batch', _batchHandler)
+      ..get('/download/<[a-zA-Z0-9]{25}>/<[a-zA-Z0-9]{64}>', _downloadHandler);
+
     final udsa = InternetAddress(lfs.filelock, type: InternetAddressType.unix);
     _channel = ClientChannel(
       udsa,
@@ -54,52 +59,69 @@ class GitLfsHttpServer {
   Future<void> stop() async {
     _log.info('Stopping server');
     await _channel?.shutdown();
-    final closed = await _server.close();
-    if (closed) {
-      _log.info('Server stopped');
-    } else {
-      _log.warning('Server stop failed');
+    await _server.close();
+    _log.info('Server stopped');
+  }
+
+  /// Return `(token, path, expiresIn)` when authentication is successful.
+  /// Otherwise, return a forbidden response.
+  dynamic _authenticate(Request request) async {
+    final authorization = request.headers['Authorization'];
+    if (authorization == null || authorization.isEmpty) {
+      _log.fine('No token provided');
+      return Response.forbidden('Forbidden');
     }
+
+    if (!authorization.startsWith('Basic') &&
+        !authorization.startsWith('RemoteAuth')) {
+      _log.fine('Invalid authentication scheme');
+      return Response.forbidden('Forbidden');
+    }
+
+    final token = authorization.split(' ')[1];
+    final form = AuthenticationForm()..token = token;
+    final reply = await _authClient.verifyToken(form);
+
+    if (!reply.success) {
+      _log.fine('Token verification failed');
+      return Response.forbidden('Forbidden');
+    }
+
+    _log.fine('${reply.path} will expire in ${reply.expiresIn} seconds');
+    return Tuple3(token, reply.path, reply.expiresIn);
   }
 
   /// Handle Batch API
   /// https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md.
   Future<Response> _batchHandler(Request request) async {
-    final token = request.headers['Authorization'];
-    if (token == null) {
-      return Response.forbidden('Forbidden');
+    final result = await _authenticate(request);
+    if (result is Response) {
+      return result;
     }
 
-    final form = AuthenticationForm()..token = token;
-    final reply = await _authClient.verifyToken(form);
-
-    if (!reply.success) {
-      return Response.forbidden('Forbidden');
-    }
-
-    final path = reply.path;
-    final expiresIn = reply.expiresIn;
+    final token = (result as Tuple3<String, String, int>).item1;
+    final path = (result).item2;
+    final expiresIn = (result).item3;
     final Response response =
-        _proceedBody(await request.readAsString(), path, expiresIn);
+        _proceedBody(await request.readAsString(), token, path, expiresIn);
 
     return response;
   }
 
   /// Handle download operation.
-  Future<Response> _downloadHandler(Request request, String oid) async {
-    final token = request.headers['Authorization'];
-    if (token == null) {
-      return Response.forbidden('Forbidden');
-    }
-
+  Future<Response> _downloadHandler(
+      Request request, String token, String oid) async {
     final form = AuthenticationForm()..token = token;
     final reply = await _authClient.verifyToken(form);
 
     if (!reply.success) {
+      _log.fine('Token verification failed');
       return Response.forbidden('Forbidden');
     }
-    final path = reply.path;
 
+    _log.fine('$oid will expire in ${reply.expiresIn} seconds');
+
+    final path = reply.path;
     final first = oid.substring(0, 2);
     final second = oid.substring(2, 4);
     final file = File('$path/lfs/objects/$first/$second/$oid');
@@ -116,13 +138,11 @@ class GitLfsHttpServer {
     return Response.ok(bytes, headers: headers);
   }
 
-  Response _proceedBody(String body, String path, int expiresIn) {
+  Response _proceedBody(String body, String token, String path, int expiresIn) {
     final json = jsonDecode(body);
-
-    Tuple2<bool, Response?> result = _validateJson(json);
-
-    if (!result.item1) {
-      return result.item2!;
+    final result = _validateJson(json);
+    if (result is Response) {
+      return result;
     }
 
     final objects = json['objects'] as List;
@@ -151,7 +171,7 @@ class GitLfsHttpServer {
         'actions': {
           'download': {
             'expires_in': expiresIn,
-            'href': 'https://$_hostname:$_port/download/$oid',
+            'href': 'https://$_hostname:$_port/download/$token/$oid',
           },
         },
       });
@@ -172,41 +192,36 @@ class GitLfsHttpServer {
   }
 
   /// Validate JSON and produce response.
-  Tuple2<bool, Response?> _validateJson(dynamic json) {
+  /// Returns `true` if JSON is valid, a `Response` otherwise.
+  dynamic _validateJson(dynamic json) {
     if (json is! Map) {
-      return Tuple2<bool, Response>(
-          false, Response.badRequest(body: 'Invalid JSON'));
+      return Response.badRequest(body: 'Invalid JSON');
     }
 
     if (!json.containsKey('operation')) {
-      return Tuple2<bool, Response>(
-          false, Response.badRequest(body: 'Missing operation'));
+      return Response.badRequest(body: 'Missing operation');
     }
 
     if (json['operation'] != Operation.download.name) {
       // Only 'download' operation is supported.
       // TODO: Support 'upload'.
-      return Tuple2<bool, Response>(
-          false, Response.badRequest(body: 'Invalid operation'));
+      return Response.badRequest(body: 'Invalid operation');
     }
 
     if (!json.containsKey('objects')) {
-      return Tuple2<bool, Response>(
-          false, Response.badRequest(body: 'Missing objects'));
+      return Response.badRequest(body: 'Missing objects');
     }
 
     final objects = json['objects'] as List;
     for (final object in objects) {
       if (!object.containsKey('oid')) {
-        return Tuple2<bool, Response>(
-            false, Response.badRequest(body: 'Missing oid'));
+        return Response.badRequest(body: 'Missing oid');
       }
       if (!object.containsKey('size')) {
-        return Tuple2<bool, Response>(
-            false, Response.badRequest(body: 'Missing size'));
+        return Response.badRequest(body: 'Missing size');
       }
     }
 
-    return Tuple2<bool, Response?>(true, null);
+    return true;
   }
 }

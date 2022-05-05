@@ -4,6 +4,7 @@ import 'dart:isolate';
 
 import 'package:git_lfs_server/auth/auth_service.dart' show authService;
 import 'package:git_lfs_server/git_lfs.dart' as lfs;
+import 'package:git_lfs_server/http_server/http_server.dart';
 import 'package:git_lfs_server/logging.dart' show onRecordServer;
 import 'package:logging/logging.dart';
 
@@ -44,8 +45,6 @@ Future<void> main(List<String> args) async {
   late final SendPort sendPortAuthCmd;
 
   portAuthData.listen((message) {
-    // TODO: Fordward this message to git-lfs-http-server
-    // TODO: auth-service and git-lfs-http-server communiate directly so don't forward
     _log.fine('Received data from $_authServiceTag: $message.');
   });
 
@@ -62,7 +61,19 @@ Future<void> main(List<String> args) async {
     }
   });
 
-  // Wait for SIGINT
+  final uri = Uri.parse(url);
+  final hostname = uri.host;
+  final port = uri.port;
+  final chain = Platform.script.resolve(certPath).toFilePath();
+  final key = Platform.script.resolve(keyPath).toFilePath();
+  final context = SecurityContext()
+    ..useCertificateChain(chain)
+    ..usePrivateKey(key);
+  final httpServer = GitLfsHttpServer(hostname, port, context);
+  _log.fine('Attempt to start ${httpServer.tag}');
+  httpServer.start();
+
+  // Wait for SIGINT, i.e. Ctrl+C
   var sigintCounter = 0;
   ProcessSignal.sigint.watch().listen((signal) async {
     sigintCounter++;
@@ -70,6 +81,9 @@ Future<void> main(List<String> args) async {
     if (sigintCounter == 1) {
       _log.fine('Attempt to shutdown git-lfs-auth-service');
       sendPortAuthCmd.send(null);
+
+      _log.fine('Attemp to shutdown ${httpServer.tag}');
+      httpServer.stop();
     } else if (sigintCounter > 2) {
       if (authServiceStopped) {
         exit(await onExit(lfs.StatusCode.success));
@@ -78,23 +92,11 @@ Future<void> main(List<String> args) async {
       }
     }
   });
-
-  // TODO: Start git-lfs-http-server here
-  // final uri = Uri.parse(url);
-  // final hostname = uri.host;
-  // final port = uri.port;
-  // final chain = Platform.script.resolve(certPath).toFilePath();
-  // final key = Platform.script.resolve(keyPath).toFilePath();
-  // final context = SecurityContext()
-  //   ..useCertificateChain(chain)
-  //   ..usePrivateKey(key);
-  // final server = GitLfsServer(hostname, port, context);
-  // server.start();
 }
 
+final _authServiceTag = 'git-lfs-auth-service';
 final Logger _log = Logger(_tag)..onRecord.listen(onRecordServer);
 final _tag = 'git-lfs-server';
-final _authServiceTag = 'git-lfs-auth-service';
 
 Future<int> onExit(lfs.StatusCode code) async {
   if (code == lfs.StatusCode.success) {

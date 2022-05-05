@@ -1,12 +1,8 @@
 #!/bin/bash
 
-mkdir -p output
+dest_url=$1
+auth_token=$2
 
-curl --insecure https://$1/oid/5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef \
+curl -s --insecure $dest_url \
 -X GET \
--H "Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=" \
---output output/binary_file.bin
-
-shasum -a 256 output/binary_file.bin -c test/data/CHECKSUM
-
-rm -rf output
+-H "Authorization: Basic $auth_token" | shasum -a 256 -c test/data/CHECKSUM
