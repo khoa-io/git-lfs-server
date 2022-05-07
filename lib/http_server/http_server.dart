@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:git_lfs_server/git_lfs.dart' as lfs;
+import 'package:git_lfs_server/logging.dart';
 import 'package:git_lfs_server/src/generated/authentication.pbgrpc.dart';
 import 'package:grpc/grpc.dart'
     show ClientChannel, ChannelOptions, ChannelCredentials;
@@ -18,8 +19,8 @@ class GitLfsHttpServer {
   final tag = 'git-lfs-http-server';
   late final Logger _log;
 
-  late final ClientChannel? _channel;
-  late final AuthenticationClient _authClient;
+  late ClientChannel _channel;
+  late AuthenticationClient _authClient;
 
   /// Router instance to handler requests.
   ///
@@ -32,15 +33,19 @@ class GitLfsHttpServer {
   final SecurityContext _context;
   late final HttpServer _server;
 
-  GitLfsHttpServer(this._hostname, this._port, this._context);
-
-  Future<void> start() async {
-    _log = Logger(tag);
+  bool _isRunning = false;
+  GitLfsHttpServer(this._hostname, this._port, this._context) {
+    _log = Logger(tag)..onRecord.listen(onRecordServer);
     if (Platform.environment['GIT_LFS_HTTP_SERVER_TRACE'] != null) {
       Logger.root.level = Level.ALL;
     } else {
       Logger.root.level = Level.INFO;
     }
+  }
+
+  bool get isRunning => _isRunning;
+
+  Future<void> start() async {
     _router = shelf_router.Router()
       ..post('/objects/batch', _batchHandler)
       ..get('/download/<[a-zA-Z0-9]{25}>/<[a-zA-Z0-9]{64}>', _downloadHandler);
@@ -51,19 +56,21 @@ class GitLfsHttpServer {
       port: 0,
       options: const ChannelOptions(credentials: ChannelCredentials.insecure()),
     );
-    _authClient = AuthenticationClient(_channel!);
+    _authClient = AuthenticationClient(_channel);
 
     _server = await HttpMultiServer.bindSecure('any', _port, _context);
     final cascade = Cascade().add(_router);
     shelf_io.serveRequests(_server, cascade.handler);
 
+    _isRunning = true;
     _log.info('Listening at https://$_hostname:$_port');
   }
 
   Future<void> stop() async {
     _log.fine('Stopping server');
-    await _channel?.shutdown();
+    await _channel.shutdown();
     await _server.close();
+    _isRunning = false;
     _log.fine('Server stopped');
   }
 
