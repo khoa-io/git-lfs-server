@@ -36,7 +36,11 @@ class GitLfsHttpServer {
 
   Future<void> start() async {
     _log = Logger(tag);
-    Logger.root.level = Level.ALL;
+    if (Platform.environment['GIT_LFS_HTTP_SERVER_TRACE'] != null) {
+      Logger.root.level = Level.ALL;
+    } else {
+      Logger.root.level = Level.INFO;
+    }
     _router = shelf_router.Router()
       ..post('/objects/batch', _batchHandler)
       ..get('/download/<[a-zA-Z0-9]{25}>/<[a-zA-Z0-9]{64}>', _downloadHandler);
@@ -57,10 +61,10 @@ class GitLfsHttpServer {
   }
 
   Future<void> stop() async {
-    _log.info('Stopping server');
+    _log.fine('Stopping server');
     await _channel?.shutdown();
     await _server.close();
-    _log.info('Server stopped');
+    _log.fine('Server stopped');
   }
 
   /// Return `(token, path, expiresIn)` when authentication is successful.

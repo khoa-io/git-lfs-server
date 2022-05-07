@@ -9,10 +9,10 @@ import 'package:git_lfs_server/logging.dart' show onRecordServer;
 import 'package:logging/logging.dart';
 
 Future<void> main(List<String> args) async {
-  if (args.isNotEmpty) {
-    if (args[0] == '--debug') {
-      Logger.root.level = Level.ALL;
-    }
+  if (Platform.environment['GIT_LFS_SERVER_TRACE'] != null) {
+    Logger.root.level = Level.ALL;
+  } else {
+    Logger.root.level = Level.INFO;
   }
 
   _log.info('$_tag has started!');
@@ -57,7 +57,7 @@ Future<void> main(List<String> args) async {
       authServiceStopped = true;
       isolate.removeOnExitListener(portAuthCmd.sendPort);
     } else {
-      _log.warning('Unexpected message from $_authServiceTag: $msg.');
+      _log.severe('Unexpected message from $_authServiceTag: $msg.');
     }
   });
 
@@ -102,7 +102,7 @@ Future<int> onExit(lfs.StatusCode code) async {
   if (code == lfs.StatusCode.success) {
     _log.info('$_tag has stopped peacefully.');
   } else {
-    _log.info('$_tag has been forced to stop!');
+    _log.warning('$_tag has been forced to stop!');
   }
   return code.index;
 }

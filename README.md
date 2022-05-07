@@ -52,6 +52,10 @@ The `git-lfs-server` needs some environment variables in order to run:
 - `GIT_LFS_EXPIRES_IN`: The number of seconds after which the server will expire the file object, for example `86400`.
 - `GIT_LFS_SERVER_CERT`: The path to the certificate file, for example `mine.crt`.
 - `GIT_LFS_SERVER_KEY`: The path to the key file, for example `mine.key`.
+- `GIT_LFS_AUTHENTICATE_TRACE`: Controls logging of `git-lfs-authenticate` command.
+- `GIT_LFS_SERVER_TRACE`: Controls logging of `git-lfs-server` command.
+- `GIT_LFS_AUTH_SERVICE_TRACE`: Controls logging of `auth-service`.
+- `GIT_LFS_HTTP_SERVER_TRACE`: Controls logging of the `http-server`.
 
 # Developing
 

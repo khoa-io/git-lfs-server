@@ -7,6 +7,11 @@ import 'package:grpc/grpc.dart';
 import 'package:logging/logging.dart';
 
 void main(List<String> args) {
+  if (Platform.environment['GIT_LFS_AUTHENTICATE_TRACE'] != null) {
+    Logger.root.level = Level.ALL;
+  } else {
+    Logger.root.level = Level.OFF;
+  }
   runZonedGuarded(() async {
     await startAuthenticate(args);
   }, (Object error, StackTrace stack) async {
@@ -35,7 +40,7 @@ final _tag = 'git-lfs-authenticate';
 
 Future<int> onExit(lfs.StatusCode code) async {
   if (code == lfs.StatusCode.success) {
-    _log.info('$_tag has stopped peacefully.');
+    _log.fine('$_tag has stopped peacefully.');
   }
   await _channel?.shutdown();
   return code.index;
