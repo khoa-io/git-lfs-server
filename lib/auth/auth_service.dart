@@ -7,22 +7,22 @@ import 'package:git_lfs_server/git_lfs.dart' as lfs;
 import 'package:git_lfs_server/logging.dart' show onRecordServer;
 import 'package:git_lfs_server/src/generated/authentication.pbgrpc.dart';
 import 'package:grpc/grpc.dart' show Server, ServiceCall;
-import 'package:logging/logging.dart';
+import 'package:logging/logging.dart' show Logger, Level;
+import 'package:random_password_generator/random_password_generator.dart'
+    show RandomPasswordGenerator;
 
 import '../git_lfs.dart';
 
-final Logger _log = Logger(_tag)..onRecord.listen(onRecordServer);
-
-final _tag = 'git-lfs-auth-service';
+final tag = 'git-lfs-auth-service';
+final Logger _log = Logger(tag)..onRecord.listen(onRecordServer);
 
 /// auth-service must run on an isolate.
 Future<void> authService(List<dynamic> args) async {
-  if (Platform.environment['GIT_LFS_AUTH_SERVICE_TRACE'] != null) {
+  if (Platform.environment['GIT_LFS_SERVER_TRACE'] != null) {
     Logger.root.level = Level.ALL;
   } else {
     Logger.root.level = Level.INFO;
   }
-
   if (args.length < 3) {
     _log.severe('Missing arguments!');
     return;
@@ -36,16 +36,16 @@ Future<void> authService(List<dynamic> args) async {
   final service = _AuthenticationService(url, sendPortData);
   final server = Server([service]);
   server.serve(address: udsa);
-  _log.info('$_tag has started.');
+  _log.info('$tag has started.');
 
   sendPortCmd.send(service.receivePortCmd.sendPort);
 
   // git-lfs-server only sends null to shutdown git-lfs-auth-service
   await service.receivePortCmd.first;
 
-  _log.fine('$_tag is shutting down.');
+  _log.fine('$tag is shutting down.');
   await server.shutdown();
-  _log.info('$_tag has shutdown.');
+  _log.info('$tag has shutdown.');
   Isolate.exit();
 }
 
@@ -92,15 +92,8 @@ class _AuthenticationService extends AuthenticationServiceBase {
     final expiresIn =
         int.parse(Platform.environment['GIT_LFS_EXPIRES_IN'] ?? '86400');
 
-    final result = Process.runSync('pwgen', ['-1', '25']);
-    final token = (result.stdout as String).trim();
-
-    if (token.length != 25) {
-      _log.severe('Failed to generate token!');
-      return RegistrationReply()
-        ..status = RegistrationReply_Status.EIO
-        ..message = 'I/O error';
-    }
+    final token = RandomPasswordGenerator().randomPassword(
+        letters: true, uppercase: true, numbers: true, passwordLength: 25);
 
     _addToken(token, request.path);
     final response = RegistrationReply()

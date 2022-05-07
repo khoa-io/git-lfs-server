@@ -7,5 +7,6 @@ export GIT_LFS_SERVER_URL GIT_LFS_EXPIRES_IN
 
 mirror_path=$1
 
-# This script is used to test the server.
-dart bin/git_lfs_authenticate.dart $mirror_path download
+dart pub global activate --source path .
+
+dart pub global run git_lfs_server:git_lfs_authenticate $mirror_path download

@@ -6,7 +6,7 @@ import 'package:git_lfs_server/auth/auth_service.dart' show authService;
 import 'package:git_lfs_server/git_lfs.dart' as lfs;
 import 'package:git_lfs_server/http_server/http_server.dart';
 import 'package:git_lfs_server/logging.dart' show onRecordServer;
-import 'package:logging/logging.dart';
+import 'package:logging/logging.dart' show Logger, Level;
 
 Future<void> main(List<String> args) async {
   if (Platform.environment['GIT_LFS_SERVER_TRACE'] != null) {
@@ -15,7 +15,7 @@ Future<void> main(List<String> args) async {
     Logger.root.level = Level.INFO;
   }
 
-  _log.info('$_tag has started!');
+  _log.info('$tag has started!');
 
   final url = Platform.environment['GIT_LFS_SERVER_URL'];
   if (url == null) {
@@ -30,16 +30,17 @@ Future<void> main(List<String> args) async {
     exit(await onExit(lfs.StatusCode.errorInvalidConfig));
   }
 
+  late final GitLfsHttpServer httpServer;
+
   // Receives data from git-lfs-auth-service (1-way)
   final portAuthData = ReceivePort();
   // Receive port/null from and send null to git-lfs-auth-service
   final portAuthCmd = ReceivePort();
 
   _log.fine('Attempt to start $_authServiceTag');
-  var authServiceStopped = false;
-  final isolate = await Isolate.spawn(
+  final authIsolate = await Isolate.spawn(
       authService, [portAuthData.sendPort, portAuthCmd.sendPort, url]);
-  isolate.addOnExitListener(portAuthCmd.sendPort);
+  authIsolate.addOnExitListener(portAuthCmd.sendPort);
 
   // Used to tell git-lfs-auth-service to shutdown later
   late final SendPort sendPortAuthCmd;
@@ -48,14 +49,19 @@ Future<void> main(List<String> args) async {
     _log.fine('Received data from $_authServiceTag: $message.');
   });
 
-  portAuthCmd.listen((msg) {
+  portAuthCmd.listen((msg) async {
     if (msg is SendPort) {
       _log.fine('$_authServiceTag gave us a port to command it.');
       sendPortAuthCmd = msg;
     } else if (msg == null) {
       _log.info('$_authServiceTag has stopped!');
-      authServiceStopped = true;
-      isolate.removeOnExitListener(portAuthCmd.sendPort);
+      authIsolate.removeOnExitListener(portAuthCmd.sendPort);
+
+      if (httpServer.isRunning) {
+        _log.fine('Attemp to shutdown ${httpServer.tag}');
+        await httpServer.stop();
+      }
+      exit(await onExit(lfs.StatusCode.success));
     } else {
       _log.severe('Unexpected message from $_authServiceTag: $msg.');
     }
@@ -69,42 +75,32 @@ Future<void> main(List<String> args) async {
   final context = SecurityContext()
     ..useCertificateChain(chain)
     ..usePrivateKey(key);
-  final httpServer = GitLfsHttpServer(hostname, port, context);
+  httpServer = GitLfsHttpServer(hostname, port, context);
   _log.fine('Attempt to start ${httpServer.tag}');
   httpServer.start();
 
   // Wait for SIGINT, i.e. Ctrl+C
-  var sigintCounter = 0;
   ProcessSignal.sigint.watch().listen((signal) async {
-    sigintCounter++;
+    _log.fine('Attempt to shutdown git-lfs-auth-service');
+    sendPortAuthCmd.send(null);
+  });
 
-    if (sigintCounter == 1) {
-      _log.fine('Attempt to shutdown git-lfs-auth-service');
-      sendPortAuthCmd.send(null);
-
-      if (httpServer.isRunning) {
-        _log.fine('Attemp to shutdown ${httpServer.tag}');
-        httpServer.stop();
-      }
-    } else if (sigintCounter > 2) {
-      if (authServiceStopped) {
-        exit(await onExit(lfs.StatusCode.success));
-      } else {
-        exit(await onExit(lfs.StatusCode.errorUnknown));
-      }
-    }
+  // Wait for SIGTERM, i.e. kill
+  ProcessSignal.sigterm.watch().listen((signal) async {
+    _log.fine('Attempt to shutdown git-lfs-auth-service');
+    sendPortAuthCmd.send(null);
   });
 }
 
+final tag = 'git-lfs-server';
 final _authServiceTag = 'git-lfs-auth-service';
-final Logger _log = Logger(_tag)..onRecord.listen(onRecordServer);
-final _tag = 'git-lfs-server';
+final Logger _log = Logger(tag)..onRecord.listen(onRecordServer);
 
 Future<int> onExit(lfs.StatusCode code) async {
   if (code == lfs.StatusCode.success) {
-    _log.info('$_tag has stopped peacefully.');
+    _log.info('$tag has stopped peacefully.');
   } else {
-    _log.warning('$_tag has been forced to stop!');
+    _log.warning('$tag has been forced to stop!');
   }
   return code.index;
 }

@@ -17,22 +17,33 @@ Your team has a (LFS) repo at GitHub (which supports LFS). That repo contains ve
 - [Dart SDK](https://dart.dev/get-dart): `git-lfs-server` is a Dart package so it needs this to execute.
   - Ubuntu: `sudo snap install flutter`
   - MacOS: `brew install flutter`
-- [pwgen](https://github.com/tytso/pwgen): `git-lfs-server` needs this to generate a random authentication code.
-  - Ubuntu: `sudo apt-get install pwgen`
-  - MacOS: `brew install pwgen`
-- [Git LFS](https://github.com/khoa-io/git-lfs-server.git): you need to fetch large files from original remote manually.
+- [Git LFS](https://github.com/khoa-io/git-lfs-server.git): keep mirrors' large files up-to-date.
   - Ubuntu: `sudo apt-get install git-lfs`
   - MacOS: `brew install git-lfs`
 
-## From source
+## macOS
 
+Modify the following script to run the server:
 ```bash
+openssl req -x509 -sha256 -nodes -days 2100 -newkey rsa:2048 -keyout "YOUR_CERT_FILE" -out "YOUR_KEY_FILE"
+
+export GIT_LFS_SERVER_URL="YOUR_SERVER_URL" # Example: "https://localhost:8080"
+export GIT_LFS_SERVER_CERT= "YOUR_CERT_FILE" # Example "${HOME}/certificates/mine.crt"
+export GIT_LFS_SERVER_KEY="YOUR_KEY_FILE" # Example "${HOME}/certificates/mine.key"
+
+# export GIT_LFS_SERVER_TRACE=1 # Uncomment to see the logs
+
 dart pub global activate --source git https://github.com/khoa-io/git-lfs-server.git
+
+dart pub global run git_lfs_server:git_lfs_server_install
+
+# In case you're upgrading
+launchctl remove com.khoa-io.git-lfs-server-agent
+
+launchctl load ${HOME}/Library/LaunchAgents/com.khoa-io.git-lfs-server-agent.plist
+launchctl start com.khoa-io.git-lfs-server-agent
 ```
 
-## Docker
-
-TODO
 # Usage
 
 ## Configure HTTPS
@@ -54,8 +65,6 @@ The `git-lfs-server` needs some environment variables in order to run:
 - `GIT_LFS_SERVER_KEY`: The path to the key file, for example `mine.key`.
 - `GIT_LFS_AUTHENTICATE_TRACE`: Controls logging of `git-lfs-authenticate` command.
 - `GIT_LFS_SERVER_TRACE`: Controls logging of `git-lfs-server` command.
-- `GIT_LFS_AUTH_SERVICE_TRACE`: Controls logging of `auth-service`.
-- `GIT_LFS_HTTP_SERVER_TRACE`: Controls logging of the `http-server`.
 
 # Developing
 
