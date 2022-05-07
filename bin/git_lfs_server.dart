@@ -82,8 +82,10 @@ Future<void> main(List<String> args) async {
       _log.fine('Attempt to shutdown git-lfs-auth-service');
       sendPortAuthCmd.send(null);
 
-      _log.fine('Attemp to shutdown ${httpServer.tag}');
-      httpServer.stop();
+      if (httpServer.isRunning) {
+        _log.fine('Attemp to shutdown ${httpServer.tag}');
+        httpServer.stop();
+      }
     } else if (sigintCounter > 2) {
       if (authServiceStopped) {
         exit(await onExit(lfs.StatusCode.success));
