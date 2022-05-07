@@ -2,12 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:git_lfs_server/git_lfs.dart' as lfs;
-import 'package:git_lfs_server/logging.dart';
 import 'package:git_lfs_server/src/generated/authentication.pbgrpc.dart';
 import 'package:grpc/grpc.dart'
     show ClientChannel, ChannelOptions, ChannelCredentials;
 import 'package:http_multi_server/http_multi_server.dart';
-import 'package:logging/logging.dart';
+import 'package:logging/logging.dart' show Logger;
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart' as shelf_router;
@@ -35,12 +34,7 @@ class GitLfsHttpServer {
 
   bool _isRunning = false;
   GitLfsHttpServer(this._hostname, this._port, this._context) {
-    _log = Logger(tag)..onRecord.listen(onRecordServer);
-    if (Platform.environment['GIT_LFS_HTTP_SERVER_TRACE'] != null) {
-      Logger.root.level = Level.ALL;
-    } else {
-      Logger.root.level = Level.INFO;
-    }
+    _log = Logger(tag);
   }
 
   bool get isRunning => _isRunning;
