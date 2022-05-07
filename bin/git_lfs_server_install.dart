@@ -38,15 +38,41 @@ final macConfig = '''
 </plist>
 ''';
 
+final linuxConfig = '''
+[Unit]
+Description=Git LFS Server
+
+[Service]
+Environment="GIT_LFS_SERVER_URL=${Platform.environment['GIT_LFS_SERVER_URL']!}" "GIT_LFS_SERVER_CERT=${Platform.environment['GIT_LFS_SERVER_CERT']!}" "GIT_LFS_SERVER_KEY=${Platform.environment['GIT_LFS_SERVER_KEY']!}" "GIT_LFS_SERVER_TRACE=1"
+WorkingDirectory=${Platform.environment['HOME']!}
+ExecStart=${Platform.executable} pub global run git_lfs_server:git_lfs_server
+
+[Install]
+WantedBy=default.target
+''';
+
 void main() {
+  final home = Platform.environment['HOME']!;
+  late final Directory agentDir;
+  late final String agentFilePath;
+
   if (Platform.isMacOS) {
-    final home = Platform.environment['HOME']!;
-    final agentDir = Directory('$home/Library/LaunchAgents');
+    agentDir = Directory('$home/Library/LaunchAgents');
     if (!agentDir.existsSync()) {
       agentDir.createSync(recursive: true);
     }
-    final path = '${agentDir.path}/com.khoa-io.git-lfs-server-agent.plist';
-    File(path).openWrite(mode: FileMode.write).write(macConfig);
-    print('Installed git-lfs-server at $path');
+    agentFilePath = '${agentDir.path}/com.khoa-io.git-lfs-server-agent.plist';
+  } else if (Platform.isLinux) {
+    agentDir = Directory('$home/.config/systemd/user');
+    if (!agentDir.existsSync()) {
+      agentDir.createSync(recursive: true);
+    }
+    agentFilePath = '${agentDir.path}/git-lfs-server.service';
+  } else {
+    stderr.writeln('Unsupported platform');
+    return;
   }
+
+  File(agentFilePath).openWrite(mode: FileMode.write).write(macConfig);
+  print('Installed git-lfs-server service at $agentFilePath');
 }

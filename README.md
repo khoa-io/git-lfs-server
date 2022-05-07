@@ -44,6 +44,27 @@ launchctl load ${HOME}/Library/LaunchAgents/com.khoa-io.git-lfs-server-agent.pli
 launchctl start com.khoa-io.git-lfs-server-agent
 ```
 
+## Linux
+
+Modify the following script to run the server:
+```bash
+openssl req -x509 -sha256 -nodes -days 2100 -newkey rsa:2048 -keyout "YOUR_CERT_FILE" -out "YOUR_KEY_FILE"
+
+export GIT_LFS_SERVER_URL="YOUR_SERVER_URL" # Example: "https://localhost:8080"
+export GIT_LFS_SERVER_CERT= "YOUR_CERT_FILE" # Example "${HOME}/certificates/mine.crt"
+export GIT_LFS_SERVER_KEY="YOUR_KEY_FILE" # Example "${HOME}/certificates/mine.key"
+
+# export GIT_LFS_SERVER_TRACE=1 # Uncomment to see the logs
+
+dart pub global activate --source git https://github.com/khoa-io/git-lfs-server.git
+
+dart pub global run git_lfs_server:git_lfs_server_install
+
+systemctl --user daemon-reload
+systemctl --user start git-lfs-server
+```
+
+
 # Usage
 
 ## Configure HTTPS
