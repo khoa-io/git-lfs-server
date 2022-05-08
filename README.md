@@ -14,11 +14,10 @@ Your team has a (LFS) repo at GitHub (which supports LFS). That repo contains ve
 # Installing
 ## Dependencies
 
-- [Dart SDK](https://dart.dev/get-dart): `git-lfs-server` is a Dart package so it needs this to execute.
-  - Ubuntu: `sudo snap install flutter`
-  - MacOS: `brew install flutter`
-- [Git LFS](https://github.com/khoa-io/git-lfs-server.git): keep mirrors' large files up-to-date.
-  - Ubuntu: `sudo apt-get install git-lfs`
+- [Dart SDK](https://dart.dev/get-dart)
+- [Git](https://git-scm.com)
+- [Git LFS](https://git-lfs.github.com)
+  - Linux: See [PackageCloud](https://packagecloud.io/github/git-lfs/install)
   - MacOS: `brew install git-lfs`
 
 ## macOS
@@ -26,6 +25,8 @@ Your team has a (LFS) repo at GitHub (which supports LFS). That repo contains ve
 Modify the following script to run the server:
 ```bash
 openssl req -x509 -sha256 -nodes -days 2100 -newkey rsa:2048 -keyout "YOUR_CERT_FILE" -out "YOUR_KEY_FILE"
+
+git config --global http."YOUR_SERVER_URL.sslverify" false
 
 export GIT_LFS_SERVER_URL="YOUR_SERVER_URL" # Example: "https://localhost:8080"
 export GIT_LFS_SERVER_CERT= "YOUR_CERT_FILE" # Example "${HOME}/certificates/mine.crt"
@@ -43,6 +44,30 @@ launchctl remove com.khoa-io.git-lfs-server-agent
 launchctl load ${HOME}/Library/LaunchAgents/com.khoa-io.git-lfs-server-agent.plist
 launchctl start com.khoa-io.git-lfs-server-agent
 ```
+
+## Linux
+
+Modify the following script to run the server:
+```bash
+sudo openssl req -x509 -sha256 -nodes -days 2100 -newkey rsa:2048 -keyout "YOUR_CERT_FILE" -out "YOUR_KEY_FILE"
+sudo openssl x509 -in YOUR_CERT_FILE -out YOUR_PEM_FILE
+
+git config --global http."YOUR_SERVER_URL.sslverify" false
+
+export GIT_LFS_SERVER_URL="YOUR_SERVER_URL" # Example: "https://localhost:8080"
+export GIT_LFS_SERVER_CERT= "YOUR_CERT_FILE" # Example "${HOME}/certificates/mine.crt"
+export GIT_LFS_SERVER_KEY="YOUR_KEY_FILE" # Example "${HOME}/certificates/mine.key"
+
+# export GIT_LFS_SERVER_TRACE=1 # Uncomment to see the logs
+
+dart pub global activate --source git https://github.com/khoa-io/git-lfs-server.git
+
+dart pub global run git_lfs_server:git_lfs_server_install
+
+systemctl --user daemon-reload
+systemctl --user start git-lfs-server
+```
+
 
 # Usage
 
@@ -63,7 +88,6 @@ The `git-lfs-server` needs some environment variables in order to run:
 - `GIT_LFS_EXPIRES_IN`: The number of seconds after which the server will expire the file object, for example `86400`.
 - `GIT_LFS_SERVER_CERT`: The path to the certificate file, for example `mine.crt`.
 - `GIT_LFS_SERVER_KEY`: The path to the key file, for example `mine.key`.
-- `GIT_LFS_AUTHENTICATE_TRACE`: Controls logging of `git-lfs-authenticate` command.
 - `GIT_LFS_SERVER_TRACE`: Controls logging of `git-lfs-server` command.
 
 # Developing

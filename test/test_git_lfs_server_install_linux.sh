@@ -12,10 +12,9 @@ dart pub global activate --source path .
 
 dart pub global run git_lfs_server:git_lfs_server_install
 
-launchctl remove com.khoa-io.git-lfs-server-agent
-launchctl load ${HOME}/Library/LaunchAgents/com.khoa-io.git-lfs-server-agent.plist
-launchctl start com.khoa-io.git-lfs-server-agent
-launchctl list com.khoa-io.git-lfs-server-agent
+systemctl --user daemon-reload
+systemctl --user start git-lfs-server
+systemctl --user status git-lfs-server
 
 git config --global http."https://localhost:8080.sslverify" false
 
@@ -31,9 +30,8 @@ fi
 
 rm -rf /tmp/git-lfs-sample-repo-mirror.git /tmp/git-lfs-sample-repo
 
-launchctl stop com.khoa-io.git-lfs-server-agent
-cat ${HOME}/Library/Logs/com.khoa-io.git-lfs-server-agent.log
-rm ${HOME}/Library/Logs/com.khoa-io.git-lfs-server-agent.log
+systemctl --user stop git-lfs-server
+journalctl --user-unit=git-lfs-server
 
 if [ $clone_success -eq 1 ]; then
     echo PASSED!
