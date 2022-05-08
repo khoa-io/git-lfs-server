@@ -55,6 +55,7 @@ void main() {
   final home = Platform.environment['HOME']!;
   late final Directory agentDir;
   late final String agentFilePath;
+  late final String config;
 
   if (Platform.isMacOS) {
     agentDir = Directory('$home/Library/LaunchAgents');
@@ -62,17 +63,19 @@ void main() {
       agentDir.createSync(recursive: true);
     }
     agentFilePath = '${agentDir.path}/com.khoa-io.git-lfs-server-agent.plist';
+    config = macConfig;
   } else if (Platform.isLinux) {
     agentDir = Directory('$home/.config/systemd/user');
     if (!agentDir.existsSync()) {
       agentDir.createSync(recursive: true);
     }
     agentFilePath = '${agentDir.path}/git-lfs-server.service';
+    config = linuxConfig;
   } else {
     stderr.writeln('Unsupported platform');
     return;
   }
 
-  File(agentFilePath).openWrite(mode: FileMode.write).write(macConfig);
+  File(agentFilePath).openWrite(mode: FileMode.write).write(config);
   print('Installed git-lfs-server service at $agentFilePath');
 }
