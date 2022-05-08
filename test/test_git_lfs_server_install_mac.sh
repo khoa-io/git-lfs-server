@@ -17,6 +17,8 @@ launchctl load ${HOME}/Library/LaunchAgents/com.khoa-io.git-lfs-server-agent.pli
 launchctl start com.khoa-io.git-lfs-server-agent
 launchctl list com.khoa-io.git-lfs-server-agent
 
+git config --global http."https://localhost:8080.sslverify" false
+
 git clone --mirror https://github.com/khoa-io/git-lfs-sample-repo.git /tmp/git-lfs-sample-repo-mirror.git
 git --git-dir=/tmp/git-lfs-sample-repo-mirror.git lfs fetch --all
 git clone ${USER}@`hostname`:/tmp/git-lfs-sample-repo-mirror.git /tmp/git-lfs-sample-repo

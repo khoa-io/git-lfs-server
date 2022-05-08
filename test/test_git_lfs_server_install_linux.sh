@@ -16,6 +16,8 @@ systemctl --user daemon-reload
 systemctl --user start git-lfs-server
 systemctl --user status git-lfs-server
 
+git config --global http."https://localhost:8080.sslverify" false
+
 git clone --mirror https://github.com/khoa-io/git-lfs-sample-repo.git /tmp/git-lfs-sample-repo-mirror.git
 git --git-dir=/tmp/git-lfs-sample-repo-mirror.git lfs fetch --all
 git clone ${USER}@`hostname`:/tmp/git-lfs-sample-repo-mirror.git /tmp/git-lfs-sample-repo
@@ -29,9 +31,7 @@ fi
 rm -rf /tmp/git-lfs-sample-repo-mirror.git /tmp/git-lfs-sample-repo
 
 systemctl --user stop git-lfs-server
-# TODO: Read log here
-# cat ${HOME}/Library/Logs/com.khoa-io.git-lfs-server-agent.log
-# rm ${HOME}/Library/Logs/com.khoa-io.git-lfs-server-agent.log
+journalctl --user-unit=git-lfs-server
 
 if [ $clone_success -eq 1 ]; then
     echo PASSED!
