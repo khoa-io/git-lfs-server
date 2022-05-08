@@ -6,10 +6,9 @@ import 'dart:isolate';
 import 'package:git_lfs_server/git_lfs.dart' as lfs;
 import 'package:git_lfs_server/logging.dart' show onRecordServer;
 import 'package:git_lfs_server/src/generated/authentication.pbgrpc.dart';
+import 'package:git_lfs_server/util.dart';
 import 'package:grpc/grpc.dart' show Server, ServiceCall;
 import 'package:logging/logging.dart' show Logger, Level;
-import 'package:random_password_generator/random_password_generator.dart'
-    show RandomPasswordGenerator;
 
 import '../git_lfs.dart';
 
@@ -92,8 +91,7 @@ class _AuthenticationService extends AuthenticationServiceBase {
     final expiresIn =
         int.parse(Platform.environment['GIT_LFS_EXPIRES_IN'] ?? '86400');
 
-    final token = RandomPasswordGenerator().randomPassword(
-        letters: true, uppercase: true, numbers: true, passwordLength: 25);
+    final token = generateSecret(25);
 
     _addToken(token, request.path);
     final response = RegistrationReply()
