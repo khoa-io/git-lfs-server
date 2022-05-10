@@ -17,11 +17,9 @@ final Logger _log = Logger(tag)..onRecord.listen(onRecordServer);
 
 /// auth-service must run on an isolate.
 Future<void> authService(List<dynamic> args) async {
-  if (Platform.environment['GIT_LFS_SERVER_TRACE'] != null) {
-    Logger.root.level = Level.ALL;
-  } else {
-    Logger.root.level = Level.INFO;
-  }
+  final tracing = getEnv(GitLfsServerEnv.trace.name) as bool;
+  Logger.root.level = tracing ? Level.ALL : Level.INFO;
+
   if (args.length < 3) {
     _log.severe('Missing arguments!');
     return;
@@ -54,10 +52,7 @@ class _AuthenticationService extends AuthenticationServiceBase {
   final String _url;
 
   /// The number of seconds before a token expires.
-  final int _expiresIn =
-      Platform.environment['GIT_LFS_SERVER_EXPIRES_IN'] == null
-          ? lfs.defaultExpiresIn
-          : int.parse(Platform.environment['GIT_LFS_SERVER_EXPIRES_IN']!);
+  final int _expiresIn = getEnv(GitLfsServerEnv.expiresIn.name) as int;
 
   /// Each token is associated with a path.
   final Map<String, String> _mapTokenPath = {};
@@ -87,10 +82,6 @@ class _AuthenticationService extends AuthenticationServiceBase {
         ..status = RegistrationReply_Status.ENOENT
         ..message = 'No such file or directory';
     }
-
-    final expiresIn =
-        int.parse(Platform.environment['GIT_LFS_EXPIRES_IN'] ?? '86400');
-
     final token = generateSecret(25);
 
     _addToken(token, request.path);
@@ -101,7 +92,7 @@ class _AuthenticationService extends AuthenticationServiceBase {
         'header': {
           'Authorization': 'RemoteAuth $token',
         },
-        'expires_in': expiresIn,
+        'expires_in': _expiresIn,
       });
 
     _sendPortData.send({'path': request.path, 'token': token});
