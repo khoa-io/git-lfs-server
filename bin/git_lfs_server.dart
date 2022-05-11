@@ -3,31 +3,29 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:git_lfs_server/auth/auth_service.dart' show authService;
-import 'package:git_lfs_server/git_lfs.dart' as lfs;
+import 'package:git_lfs_server/git_lfs.dart';
 import 'package:git_lfs_server/http_server/http_server.dart';
 import 'package:git_lfs_server/logging.dart' show onRecordServer;
 import 'package:logging/logging.dart' show Logger, Level;
+import 'package:git_lfs_server/util.dart' show getEnv;
 
 Future<void> main(List<String> args) async {
-  if (Platform.environment['GIT_LFS_SERVER_TRACE'] != null) {
-    Logger.root.level = Level.ALL;
-  } else {
-    Logger.root.level = Level.INFO;
-  }
+  final bool tracing = getEnv(GitLfsServerEnv.trace.name);
+  Logger.root.level = tracing ? Level.ALL : Level.INFO;
 
   _log.info('$tag has started!');
 
-  final url = Platform.environment['GIT_LFS_SERVER_URL'];
-  if (url == null) {
+  final String url = getEnv(GitLfsServerEnv.url.name);
+  if (url.isEmpty) {
     _log.severe('GIT_LFS_SERVER_URL is not set!');
-    exit(await onExit(lfs.StatusCode.errorInvalidConfig));
+    exit(await onExit(StatusCode.errorInvalidConfig));
   }
 
-  final certPath = Platform.environment['GIT_LFS_SERVER_CERT'];
-  final keyPath = Platform.environment['GIT_LFS_SERVER_KEY'];
-  if (certPath == null || keyPath == null) {
+  final String certPath = getEnv(GitLfsServerEnv.cert.name);
+  final String keyPath = getEnv(GitLfsServerEnv.key.name);
+  if (certPath.isEmpty || keyPath.isEmpty) {
     _log.severe('GIT_LFS_SERVER_CERT and GIT_LFS_SERVER_KEY are not set!');
-    exit(await onExit(lfs.StatusCode.errorInvalidConfig));
+    exit(await onExit(StatusCode.errorInvalidConfig));
   }
 
   late final GitLfsHttpServer httpServer;
@@ -61,7 +59,7 @@ Future<void> main(List<String> args) async {
         _log.fine('Attemp to shutdown ${httpServer.tag}');
         await httpServer.stop();
       }
-      exit(await onExit(lfs.StatusCode.success));
+      exit(await onExit(StatusCode.success));
     } else {
       _log.severe('Unexpected message from $_authServiceTag: $msg.');
     }
@@ -96,8 +94,8 @@ final tag = 'git-lfs-server';
 final _authServiceTag = 'git-lfs-auth-service';
 final Logger _log = Logger(tag)..onRecord.listen(onRecordServer);
 
-Future<int> onExit(lfs.StatusCode code) async {
-  if (code == lfs.StatusCode.success) {
+Future<int> onExit(StatusCode code) async {
+  if (code == StatusCode.success) {
     _log.info('$tag has stopped peacefully.');
   } else {
     _log.warning('$tag has been forced to stop!');

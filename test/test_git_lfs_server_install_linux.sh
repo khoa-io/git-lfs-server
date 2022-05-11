@@ -31,7 +31,7 @@ fi
 rm -rf /tmp/git-lfs-sample-repo-mirror.git /tmp/git-lfs-sample-repo
 
 systemctl --user stop git-lfs-server
-journalctl --user-unit=git-lfs-server
+journalctl --user-unit=git-lfs-server --no-pager
 
 if [ $clone_success -eq 1 ]; then
     echo PASSED!

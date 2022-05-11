@@ -18,6 +18,7 @@ dependencies:
 
 dev_dependencies:
   lints: ^1.0.0
+  test: ^1.21.1
 
 executables:
   git-lfs-authenticate: git_lfs_authenticate
