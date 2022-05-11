@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:git_lfs_server/auth/auth_service.dart' show authService;
-import 'package:git_lfs_server/git_lfs.dart' show GitLfsServerEnv, StatusCode;
+import 'package:git_lfs_server/git_lfs.dart';
 import 'package:git_lfs_server/http_server/http_server.dart';
 import 'package:git_lfs_server/logging.dart' show onRecordServer;
 import 'package:logging/logging.dart' show Logger, Level;

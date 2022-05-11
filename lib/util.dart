@@ -41,8 +41,8 @@ dynamic getEnv(String name) {
     if (expiresIn is int) {
       return expiresIn;
     }
-    return int.tryParse(expiresIn as String);
-  } else {
-    return false;
+    return int.tryParse(expiresIn as String) ?? defaultExpiresIn;
   }
+
+  throw ArgumentError('Unknown environment variable: $name');
 }
