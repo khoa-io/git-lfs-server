@@ -15,6 +15,7 @@ dependencies:
   shelf_static: ^1.0.0
   tuple: ^2.0.0
   grpc: ^3.0.2
+  protobuf: ^2.0.1
 
 dev_dependencies:
   lints: ^1.0.0
