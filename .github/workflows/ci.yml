@@ -1,5 +1,5 @@
 # https://github.com/dart-lang/setup-dart/blob/main/README.md
-name: Dart
+name: CI
 
 on:
   push:
