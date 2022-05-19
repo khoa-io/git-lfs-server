@@ -17,7 +17,10 @@ RUN echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
 RUN ssh-keygen -A
 
 COPY build/git-lfs-authenticate /usr/local/bin/git-lfs-authenticate
+RUN chmod +x /usr/local/bin/git-lfs-authenticate
 COPY build/git-lfs-server /usr/local/bin/git-lfs-server
+RUN chmod +x /usr/local/bin/git-lfs-server
+
 # TODO: Custom certs
 COPY build/certificates/git-lfs-server.crt /etc/git-lfs/certificates/git-lfs-server.crt
 COPY build/certificates/git-lfs-server.key /etc/git-lfs/certificates/git-lfs-server.key
