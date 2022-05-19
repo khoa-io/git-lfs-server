@@ -21,11 +21,6 @@ RUN chmod +x /usr/local/bin/git-lfs-authenticate
 COPY build/git-lfs-server /usr/local/bin/git-lfs-server
 RUN chmod +x /usr/local/bin/git-lfs-server
 
-# TODO: Custom certs
-COPY build/certificates/git-lfs-server.crt /etc/git-lfs/certificates/git-lfs-server.crt
-COPY build/certificates/git-lfs-server.key /etc/git-lfs/certificates/git-lfs-server.key
-COPY build/certificates/git-lfs-server.pem /etc/git-lfs/certificates/git-lfs-server.pem
-
 RUN echo `which git-shell` >> /etc/shells
 RUN useradd --create-home --shell `which git-shell` --uid ${UID} --user-group ${USER}
 USER ${USER}
