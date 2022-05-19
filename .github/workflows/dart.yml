@@ -58,4 +58,4 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/khoa10/amz-git-mirroring:${{ env.SHORT_SHA }}
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/amz-git-mirroring:${{ env.SHORT_SHA }}
