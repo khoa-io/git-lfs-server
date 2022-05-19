@@ -23,15 +23,15 @@ jobs:
         run: dart pub get
 
       - name: Build git-lfs-authenticate
-        run: dart compile exe bin/git_lfs_authenticate.dart --output git-lfs-authenticate-${{ matrix.os }}-$(git rev-parse --short=9 HEAD)
+        run: dart compile exe bin/git_lfs_authenticate.dart --output git-lfs-authenticate-${{ matrix.os }}
       - uses: actions/upload-artifact@v3
         with:
-          name: git-lfs-authenticate-${{ matrix.os }}-$(git rev-parse --short=9 HEAD)
-          path: git-lfs-authenticate-${{ matrix.os }}-$(git rev-parse --short=9 HEAD)
+          name: git-lfs-authenticate-${{ matrix.os }}
+          path: git-lfs-authenticate-${{ matrix.os }}
 
       - name: Build git-lfs-server
-        run: dart compile exe bin/git_lfs_server.dart --output git-lfs-server-${{ matrix.os }}-$(git rev-parse --short=9 HEAD)
+        run: dart compile exe bin/git_lfs_server.dart --output git-lfs-server-${{ matrix.os }}
       - uses: actions/upload-artifact@v3
         with:
-          name: git-lfs-server-${{ matrix.os }}-$(git rev-parse --short=9 HEAD)
-          path: git-lfs-server-${{ matrix.os }}-$(git rev-parse --short=9 HEAD)
+          name: git-lfs-server-${{ matrix.os }}
+          path: git-lfs-server-${{ matrix.os }}
