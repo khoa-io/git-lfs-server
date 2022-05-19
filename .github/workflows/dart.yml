@@ -74,6 +74,7 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/amz-git-mirroring:${{ env.BUILD_NUMBER }}-${{ env.SHORT_SHA }}
       - name: Update repo description
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: peter-evans/dockerhub-description@v2
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
