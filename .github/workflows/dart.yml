@@ -13,12 +13,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        sdk: [stable, beta, dev]
     steps:
       - uses: actions/checkout@v3
       - uses: dart-lang/setup-dart@v1.3
         with:
-          sdk: ${{ matrix.sdk }}
+          sdk: stable
 
       - name: Install dependencies
         run: dart pub get
@@ -27,12 +26,12 @@ jobs:
         run: dart compile exe bin/git_lfs_authenticate.dart --output git-lfs-authenticate-${{ matrix.os }}
       - uses: actions/upload-artifact@v3
         with:
-          name: git-lfs-authenticate-${{ matrix.os }}
-          path: git-lfs-authenticate-${{ matrix.os }}
+          name: git-lfs-authenticate-${{ matrix.os }}-$(git rev-parse --short=9 HEAD)
+          path: git-lfs-authenticate-${{ matrix.os }}-$(git rev-parse --short=9 HEAD)
 
       - name: Build git-lfs-server
         run: dart compile exe bin/git_lfs_server.dart --output git-lfs-server-${{ matrix.os }}
       - uses: actions/upload-artifact@v3
         with:
-          name: git-lfs-server-${{ matrix.os }}
-          path: git-lfs-server-${{ matrix.os }}
+          name: git-lfs-server-${{ matrix.os }}-$(git rev-parse --short=9 HEAD)
+          path: git-lfs-server-${{ matrix.os }}-$(git rev-parse --short=9 HEAD)
