@@ -1,95 +1,75 @@
 A simple Git LFS server implementation in Dart
 ===============================
 
+[![CI](https://github.com/khoa-io/git-lfs-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/khoa-io/git-lfs-server/actions/workflows/ci.yml)
 # Overview
 
-> [Git Large File Storage (LFS)](https://git-lfs.github.com) is a free, open-source extension that replaces large files with text pointers inside Git and stores the contents of those files on a remote server.
-> -- [GitHub Training & Guides](https://youtu.be/uLR1RNqJ1Mw)
+Git LFS client (`git-lfs` or `git lfs` command) requires a dedicated LFS-content server (not the Git server!) in order to download/upload binary files. There will be an issue if you try to use a mirror of a Git repo with LFS-enabled: [git-lfs#1338](https://github.com/git-lfs/git-lfs/issues/1338). This Git LFS server implementation solves that problem.
 
-Git LFS protocol requires a Git server that supports LFS, and a Git LFS client. There is only one official open-source [LFS client](https://github.com/git-lfs/git-lfs.git). But there are several [LFS server implementations](https://github.com/git-lfs/git-lfs/wiki/Implementations). This implementation provides a simple solution that works with Git mirrors.
+There are other [implementations](https://github.com/git-lfs/git-lfs/wiki/Implementations) that you can look for if you're not working with Git mirrors.
 
-## An example that this implementation can be used for
-Your team has a (LFS) repo at GitHub (which supports LFS). That repo contains very large file(s) so you mirror it to your local machine to share with your team to save bandwidth. Your teammates can clone/fetch/pull from your local machine instead of GitHub. The problem is `git lfs` always fails to fetch the file. You run `git lfs fetch --all` on the mirror but it doesn't solve the problem. That's because your machine doesn't have a Git LFS server. So this implementation now comes in handy. Just install, run it, then your teammates can clone/fetch/pull from your local machine, with LFS. Note that this implementation only supports _download_ operations, i.e. `git lfs fetch`. You **cannot** upload files, i.e. `git lfs push`.
+# Quick Reference
 
-# Installing
-## Dependencies
+* Maintained by:
+[Khoa](https://github.com/khoa-io)
 
-- [Dart SDK](https://dart.dev/get-dart)
-- [Git](https://git-scm.com)
-- [Git LFS](https://git-lfs.github.com)
-  - Linux: See [PackageCloud](https://packagecloud.io/github/git-lfs/install)
-  - MacOS: `brew install git-lfs`
+* Documentation:
+[git-lfs-server Wiki](https://github.com/khoa-io/git-lfs-server/wiki).
 
-## macOS
+* Where to get help:
+[git-lfs-server Discussions](https://github.com/khoa-io/git-lfs-server/discussions/categories/q-a)
 
-Modify the following script to run the server:
+# Benefit
+
+There are two important reasons to set up a Git server for mirroring with LFS-enabled:
+- To save bandwidth on the connection to the remote server, especially if the repositories are big.
+- Team members don't have access to the remote server, but your Git server can.
+
+# Limitations
+
+- Only _download_ operation is supported. You cannot _upload_ binary files.
+- LFS contents in the mirror are not fetched automatically by this tool.
+
+# Quick Start
+
+For the sake of simplicity, I have created a Docker Hub repository with the images ready to use. Assumed that you have the same problem as in [git-lfs#1338](https://github.com/git-lfs/git-lfs/issues/1338) (There's a picture in it if you like graphical presentation). Although, for a smoothly experience, I would like add some more details:
+- Mirrors are available via SSH.
+- Self-signed certificate: we need a `.key` file, a `.crt` file, a `.pem` file.
+- You have some automation to fetch latest Git refs and LFS contents.
+- Far remote is LFS-enabled
+- Near remote has Docker installed
+
+If all requirements are satisfied, let us proceed step-by-step
+1. Pull the image: `docker pull khoa10/amz-git-mirroring:latest`
+2. Create a volume to store the certificate and copy the files:
 ```bash
-openssl req -x509 -sha256 -nodes -days 2100 -newkey rsa:2048 -keyout "YOUR_CERT_FILE" -out "YOUR_KEY_FILE"
-
-git config --global http."YOUR_SERVER_URL.sslverify" false
-
-export GIT_LFS_SERVER_URL="YOUR_SERVER_URL" # Example: "https://localhost:8080"
-export GIT_LFS_SERVER_CERT= "YOUR_CERT_FILE" # Example "${HOME}/certificates/mine.crt"
-export GIT_LFS_SERVER_KEY="YOUR_KEY_FILE" # Example "${HOME}/certificates/mine.key"
-
-# export GIT_LFS_SERVER_TRACE=1 # Uncomment to see the logs
-
-dart pub global activate --source git https://github.com/khoa-io/git-lfs-server.git
-
-dart pub global run git_lfs_server:git_lfs_server_install
-
-# In case you're upgrading
-launchctl remove com.khoa-io.git-lfs-server-agent
-
-launchctl load ${HOME}/Library/LaunchAgents/com.khoa-io.git-lfs-server-agent.plist
-launchctl start com.khoa-io.git-lfs-server-agent
+# There must be a folder named `certificates` with 3 files: `git-lfs-server.key`, `git-lfs-server.cert`, `git-lfs-server.pem`
+docker volume create --name git-lfs-server-certs
+docker run --rm -v $PWD:/source -v git-lfs-server-certs:/dest -w /source alpine cp -r certificates /dest
 ```
-
-## Linux
-
-Modify the following script to run the server:
+3. With your mirrors located at `$MIRRORING_PATH`, create and the container:
 ```bash
-sudo openssl req -x509 -sha256 -nodes -days 2100 -newkey rsa:2048 -keyout "YOUR_CERT_FILE" -out "YOUR_KEY_FILE"
-sudo openssl x509 -in YOUR_CERT_FILE -out YOUR_PEM_FILE
-
-git config --global http."YOUR_SERVER_URL.sslverify" false
-
-export GIT_LFS_SERVER_URL="YOUR_SERVER_URL" # Example: "https://localhost:8080"
-export GIT_LFS_SERVER_CERT= "YOUR_CERT_FILE" # Example "${HOME}/certificates/mine.crt"
-export GIT_LFS_SERVER_KEY="YOUR_KEY_FILE" # Example "${HOME}/certificates/mine.key"
-
-# export GIT_LFS_SERVER_TRACE=1 # Uncomment to see the logs
-
-dart pub global activate --source git https://github.com/khoa-io/git-lfs-server.git
-
-dart pub global run git_lfs_server:git_lfs_server_install
-
-systemctl --user daemon-reload
-systemctl --user start git-lfs-server
+docker run \
+--detach \
+--name git-mirroring-with-lfs-enabled \
+--mount type=bind,src=${MIRRORING_PATH},dst=/source \
+-p 8443:8443 \
+-p 2022:22 \
+khoa10/amz-git-mirroring
 ```
 
-
-# Usage
-
-## Configure HTTPS
-
-- Server:
-    - Generate a key pair: `openssl req -x509 -sha256 -nodes -days 2100 -newkey rsa:2048 -keyout mine.key -out mine.crt`
-    - Convert the key pair to a PEM file: `openssl x509 -in mine.crt -out mine.pem`
-- Client: modify `~/.gitconfig`
+Now, your Git server is available at `ssh://git@<NEAR_REMOTE>:2022` and the LFS server is available at `https://<NEAR_REMOTE>:8443`.
+Because we're using self-signed certificate, Git client must ignore TLS verification or trust the certificate.
+To ignore TLS verification:
+```bash
+git config --global http.https://<NEAR_REMOTE>:8443.sslverify false
 ```
-[http "https://address:port"]
-	sslverify = false
+For better experience, client should configure to download from _near_ and push to _far_:
+```bash
+git config --global url.ssh://git@<NEAR_REMOTE>:2022.insteadOf ssh://git@<FAR_REMOTE>
+git config --global url.ssh://git@<FAR_REMOTE>.pushInsteadOf ssh://git@<NEAR_REMOTE>:2022
 ```
 
-## Environment Variables
-The `git-lfs-server` needs some environment variables in order to run:
-- `GIT_LFS_SERVER_URL`: The URL of the `git-lfs-server`, for example: `http://localhost:8080`.
-- `GIT_LFS_EXPIRES_IN`: The number of seconds after which the server will expire the file object, for example `86400`.
-- `GIT_LFS_SERVER_CERT`: The path to the certificate file, for example `mine.crt`.
-- `GIT_LFS_SERVER_KEY`: The path to the key file, for example `mine.key`.
-- `GIT_LFS_SERVER_TRACE`: Controls logging of `git-lfs-server` command.
+# License
 
-# Developing
-
-Check out [DEVELOPING.md](./DEVELOPING.md)
+MIT license
