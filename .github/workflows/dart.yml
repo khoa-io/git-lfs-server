@@ -1,0 +1,30 @@
+# https://github.com/dart-lang/setup-dart/blob/main/README.md
+name: Dart
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        sdk: [stable, beta, dev]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dart-lang/setup-dart@v1.3
+        with:
+          sdk: ${{ matrix.sdk }}
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Build git-lfs-authenticate-linux-amd64
+        run: dart compile exe bin/git_lfs_authenticate.dart
+
+      - name: Build git-lfs-server-linux-amd64
+        run: dart compile exe bin/git_lfs_server.dart
