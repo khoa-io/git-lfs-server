@@ -3,9 +3,9 @@ name: Dart
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build-binaries:
@@ -13,8 +13,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu, macos]
-      max-parallel: 1
-      fail-fast: true
     steps:
       - uses: actions/checkout@v3
       - uses: dart-lang/setup-dart@v1.3
