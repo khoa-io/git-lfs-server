@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  BUILD_NUMBER: "${{ github.run_number }}"
-
 jobs:
   build-binaries-macos-amd64:
     name: "Build binaries for macOS AMD64"
@@ -23,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8``" >> $GITHUB_ENV
       - uses: dart-lang/setup-dart@v1.3
         with:
           sdk: stable
@@ -38,14 +35,14 @@ jobs:
         run: dart compile exe bin/git_lfs_authenticate.dart --output build/git-lfs-authenticate
       - uses: actions/upload-artifact@v3
         with:
-          name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
           path: build/git-lfs-authenticate
 
       - name: Build git-lfs-server
         run: dart compile exe bin/git_lfs_server.dart --output build/git-lfs-server
       - uses: actions/upload-artifact@v3
         with:
-          name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
           path: build/git-lfs-server
 
   build-binaries-linux-amd64:
@@ -65,7 +62,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8``" >> $GITHUB_ENV
       - uses: dart-lang/setup-dart@v1.3
         with:
           sdk: stable
@@ -81,14 +78,14 @@ jobs:
         run: dart compile exe bin/git_lfs_authenticate.dart --output build/git-lfs-authenticate
       - uses: actions/upload-artifact@v3
         with:
-          name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
           path: build/git-lfs-authenticate
 
       - name: Build git-lfs-server
         run: dart compile exe bin/git_lfs_server.dart --output build/git-lfs-server
       - uses: actions/upload-artifact@v3
         with:
-          name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
           path: build/git-lfs-server
 
   build-binaries-linux-arm64:
@@ -104,7 +101,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8``" >> $GITHUB_ENV
       - uses: uraimo/run-on-arch-action@v2
         name: Build ARM64 binaries
         with:
@@ -143,11 +140,11 @@ jobs:
             cp git-lfs-authenticate "/build"
       - uses: actions/upload-artifact@v3
         with:
-          name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
           path: build/git-lfs-authenticate
       - uses: actions/upload-artifact@v3
         with:
-          name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
           path: build/git-lfs-server
 
   build-images:
@@ -168,14 +165,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8``" >> $GITHUB_ENV
       - uses: actions/download-artifact@v3
         with:
-          name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
           path: build/git-lfs-authenticate
       - uses: actions/download-artifact@v3
         with:
-          name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
           path: build/git-lfs-server
       - name: List binaries
         run: ls -la build
