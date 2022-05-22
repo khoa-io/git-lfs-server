@@ -114,9 +114,8 @@ jobs:
             BUILD_ARCH: "${{ env.BUILD_ARCH }}"
             BUILD_NUMBER: "${{ env.BUILD_NUMBER }}"
             BUILD_VERSION: "${{ env.BUILD_VERSION }}"
-            URL: "https://storage.googleapis.com/dart-archive/channels/be/raw/latest/sdk/dartsdk-linux-arm64-release.zip"
           install: |
-            curl --connect-timeout 15 --retry 5 "$URL" > "${HOME}/dartsdk.zip"
+            curl --connect-timeout 15 --retry 5 "https://storage.googleapis.com/dart-archive/channels/be/raw/latest/sdk/dartsdk-linux-arm64-release.zip" > "${HOME}/dartsdk.zip"
             unzip -o "${HOME}/dartsdk.zip" -d "${HOME}" > /dev/null
             if [ $? -ne 0 ]; then
               echo -e "::error::Download failed! Please check passed arguments."
