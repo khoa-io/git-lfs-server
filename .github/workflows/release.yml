@@ -1,10 +1,12 @@
-name: CI
+name: Release
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags:
+      - 'v*'
+
+env:
+  BUILD_VERSION: "${{ github.ref }}"
 
 jobs:
   build-binaries-macos-amd64:
@@ -19,8 +21,6 @@ jobs:
       BUILD_ARCH: "${{ matrix.arch }}"
     steps:
       - uses: actions/checkout@v3
-      - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
       - uses: dart-lang/setup-dart@v1.3
         with:
           sdk: stable
@@ -61,8 +61,6 @@ jobs:
       BUILD_ARCH: "${{ matrix.arch }}"
     steps:
       - uses: actions/checkout@v3
-      - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
       - uses: dart-lang/setup-dart@v1.3
         with:
           sdk: stable
@@ -100,8 +98,6 @@ jobs:
       BUILD_ARCH: "${{ matrix.arch }}"
     steps:
       - uses: actions/checkout@v3
-      - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
       - uses: uraimo/run-on-arch-action@v2
         name: Build ARM64 binaries
         with:
@@ -164,8 +160,6 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v3
-      - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
       - uses: actions/download-artifact@v3
         with:
           name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
@@ -195,5 +189,11 @@ jobs:
           platforms: linux/${{ matrix.arch }}
           push: true
           tags: |
-            ghcr.io/${{ github.actor }}/amz-git-mirroring:${{ env.BUILD_VERSION }}
-            ghcr.io/${{ github.actor }}/amz-git-mirroring:latest
+            ${{ secrets.DOCKER_HUB_USERNAME }}/amz-git-mirroring:${{ env.BUILD_VERSION }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/amz-git-mirroring:latest
+      - name: Update repo description
+        uses: peter-evans/dockerhub-description@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+          repository: ${{ secrets.DOCKER_HUB_USERNAME }}/amz-git-mirroring
