@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 env:
-  BUILD_VERSION: "${{ github.ref }}"
+  BUILD_VERSION: "${{ github.ref_name }}"
 
 jobs:
   build-binaries-macos-amd64:
