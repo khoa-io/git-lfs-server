@@ -95,35 +95,57 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         arch: [arm64]
-    container:
-      image:
-        arm64v8/dart
-      options: --tty --platform linux/${{ matrix.arch }}
     env:
       BUILD_OS: "linux"
       BUILD_ARCH: "${{ matrix.arch }}"
     steps:
       - uses: actions/checkout@v3
+      - uses: uraimo/run-on-arch-action@v2
+        name: Build ARM64 binaries
+        with:
+          arch: aarch64
+          distro: ubuntu18.04
       - uses: dart-lang/setup-dart@v1.3
         with:
           sdk: stable
-          architecture: arm64
-
-      - name: Install dependencies
-        run: dart pub get
-
-      - name: Create build folder
-        run: mkdir -p build
-
-      - name: Build git-lfs-authenticate
-        run: dart compile exe bin/git_lfs_authenticate.dart --output build/git-lfs-authenticate
+          architecture: "${{ matrix.arch }}"
+          setup: |
+            mkdir -p "${PWD}/build"
+          dockerRunArgs: |
+            --volume "${PWD}/build:/build"
+          env: |
+            BUILD_OS: "${{ env.BUILD_OS }}"
+            BUILD_ARCH: "${{ env.BUILD_ARCH }}"
+            BUILD_NUMBER: "${{ env.BUILD_NUMBER }}"
+            BUILD_VERSION: "${{ env.BUILD_VERSION }}"
+            URL: "https://storage.googleapis.com/dart-archive/channels/be/raw/latest/sdk/dartsdk-linux-arm64-release.zip"
+          install: |
+            curl --connect-timeout 15 --retry 5 "$URL" > "${HOME}/dartsdk.zip"
+            unzip -o "${HOME}/dartsdk.zip" -d "${HOME}" > /dev/null
+            if [ $? -ne 0 ]; then
+              echo -e "::error::Download failed! Please check passed arguments."
+              exit 1
+            fi
+            rm "${HOME}/dartsdk.zip"
+            PUBCACHE="${HOME}/.pub-cache"
+            DART_HOME="${HOME}/dart-sdk"
+            echo "PUB_CACHE=${PUBCACHE}" >> ${HOME}/.bashrc
+            echo "Pub cache set to: ${PUBCACHE}"
+            echo "DART_HOME=${DART_HOME}" >> ${HOME}/.bashrc
+            echo -e "Successfully installed Dart SDK:"
+            ${HOME}/dart-sdk/bin/dart --version
+          run: |
+            git clone https://github.com/khoa-io/git-lfs-server.git --branch ${BUILD_VERSION} --depth 1
+            cd git-lfs-server
+            pub get
+            dart compile exe bin/git_lfs_server.dart --output git-lfs-server
+            dart compile exe bin/git_lfs_authenticate.dart --output git-lfs-authenticate
+            cp git-lfs-server "/build"
+            cp git-lfs-authenticate "/build"
       - uses: actions/upload-artifact@v3
         with:
           name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
           path: build/git-lfs-authenticate
-
-      - name: Build git-lfs-server
-        run: dart compile exe bin/git_lfs_server.dart --output build/git-lfs-server
       - uses: actions/upload-artifact@v3
         with:
           name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
