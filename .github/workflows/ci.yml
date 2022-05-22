@@ -58,6 +58,9 @@ jobs:
     needs:
       - build-binaries
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Set BUILD_OS environment variable for Linux
         run: echo "BUILD_OS=linux" >> $GITHUB_ENV
