@@ -110,10 +110,7 @@ jobs:
           dockerRunArgs: |
             --volume "${PWD}/build:/build"
           env: |
-            BUILD_OS: "${{ env.BUILD_OS }}"
-            BUILD_ARCH: "${{ env.BUILD_ARCH }}"
-            BUILD_NUMBER: "${{ env.BUILD_NUMBER }}"
-            BUILD_VERSION: "${{ env.BUILD_VERSION }}"
+            BUILD_BRANCH: "${{ github.head_ref }}"
           install: |
             apt-get update -q
             apt-get install -q -y curl git unzip
@@ -134,7 +131,7 @@ jobs:
           run: |
             git clone --quiet https://github.com/khoa-io/git-lfs-server.git
             cd git-lfs-server
-            git checkout --detach ${BUILD_VERSION}
+            git checkout --detach ${BUILD_BRANCH}
             pub get
             dart compile exe bin/git_lfs_server.dart --output git-lfs-server
             dart compile exe bin/git_lfs_authenticate.dart --output git-lfs-authenticate
