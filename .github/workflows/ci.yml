@@ -11,6 +11,42 @@ env:
   BUILD_NUMBER: "${{ github.run_number }}"
 
 jobs:
+  build-binaries-macos-amd64:
+    name: "Build binaries for macOS AMD64"
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      matrix:
+        os: [macos-latest]
+        arch: [amd64]
+    env:
+      BUILD_OS: "macos"
+      BUILD_ARCH: "${{ matrix.arch }}"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dart-lang/setup-dart@v1.3
+        with:
+          sdk: stable
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Create build folder
+        run: mkdir -p build
+
+      - name: Build git-lfs-authenticate
+        run: dart compile exe bin/git_lfs_authenticate.dart --output build/git-lfs-authenticate
+      - uses: actions/upload-artifact@v3
+        with:
+          name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          path: build/git-lfs-authenticate
+
+      - name: Build git-lfs-server
+        run: dart compile exe bin/git_lfs_server.dart --output build/git-lfs-server
+      - uses: actions/upload-artifact@v3
+        with:
+          name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          path: build/git-lfs-server
+
   build-binaries-linux-amd64:
     name: "Build binaries for Linux AMD64"
     runs-on: "${{ matrix.os }}"
@@ -96,7 +132,8 @@ jobs:
   build-images:
     name: "Build images"
     needs:
-      - build-binaries
+      - build-binaries-linux-amd64
+      - build-binaries-linux-arm64
     runs-on: ubuntu-latest
     strategy:
       matrix:
