@@ -20,17 +20,20 @@ jobs:
         arch: [amd64, arm64]
     container:
       image:
-        dart
+        arm64v8/dart
+        amd64/dart
       options: --tty --platform linux/${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v3
+      - name: Print some information
+        run: echo "Image ${{ job.container.image }}"
       - uses: dart-lang/setup-dart@v1.3
-        if: "${{ matrix.arch }} == arm64"
+        if: "${{ job.container.image }} == arm64v8/dart"
         with:
           sdk: stable
           architecture: arm64
       - uses: dart-lang/setup-dart@v1.3
-        if: "${{ matrix.arch }} == amd64"
+        if: "${{ job.container.image }} == amd64/dart"
         with:
           sdk: stable
           architecture: x64
