@@ -105,10 +105,6 @@ jobs:
         with:
           arch: aarch64
           distro: ubuntu18.04
-      - uses: dart-lang/setup-dart@v1.3
-        with:
-          sdk: stable
-          architecture: "${{ matrix.arch }}"
           setup: |
             mkdir -p "${PWD}/build"
           dockerRunArgs: |
