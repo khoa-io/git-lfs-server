@@ -8,8 +8,8 @@ on:
     branches: [main]
 
 env:
-  BUILD_VERSION: "${GITHUB_SHA::8}"
-  BUILD_NUMBER: "{{ github.run_number }}"
+  BUILD_VERSION: "${{ github.sha }}::7"
+  BUILD_NUMBER: "${{ github.run_number }}"
 
 jobs:
   build-binaries:
