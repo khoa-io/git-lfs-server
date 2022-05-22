@@ -19,7 +19,7 @@ jobs:
         os: [ubuntu-latest]
         arch: [amd64, arm64]
     container:
-      image:
+      image: |
         arm64v8/dart
         amd64/dart
       options: --tty --platform linux/${{ matrix.arch }}
