@@ -108,7 +108,7 @@ jobs:
           dockerRunArgs: |
             --volume "${PWD}/build:/build"
           env: |
-            BUILD_BRANCH: "${{ github.head_ref }}"
+            BUILD_BRANCH: "${{ github.ref_name }}"
           install: |
             apt-get update -q
             apt-get install -q -y curl git unzip
