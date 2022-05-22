@@ -131,9 +131,9 @@ jobs:
           run: |
             git clone --quiet https://github.com/khoa-io/git-lfs-server.git --branch "${BUILD_BRANCH}" --depth 1
             cd git-lfs-server
-            pub get
-            dart compile exe bin/git_lfs_server.dart --output git-lfs-server
-            dart compile exe bin/git_lfs_authenticate.dart --output git-lfs-authenticate
+            "${HOME}/dart-sdk/bin/dart" pub get
+            "${HOME}/dart-sdk/bin/dart" compile exe bin/git_lfs_server.dart --output git-lfs-server
+            "${HOME}/dart-sdk/bin/dart" compile exe bin/git_lfs_authenticate.dart --output git-lfs-authenticate
             cp git-lfs-server "/build"
             cp git-lfs-authenticate "/build"
       - uses: actions/upload-artifact@v3
