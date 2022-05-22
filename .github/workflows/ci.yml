@@ -129,9 +129,8 @@ jobs:
             echo -e "Successfully installed Dart SDK:"
             ${HOME}/dart-sdk/bin/dart --version
           run: |
-            git clone --quiet https://github.com/khoa-io/git-lfs-server.git
+            git clone --quiet https://github.com/khoa-io/git-lfs-server.git --branch "${BUILD_BRANCH}" --depth 1
             cd git-lfs-server
-            git checkout --detach ${BUILD_BRANCH}
             pub get
             dart compile exe bin/git_lfs_server.dart --output git-lfs-server
             dart compile exe bin/git_lfs_authenticate.dart --output git-lfs-authenticate
