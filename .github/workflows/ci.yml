@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  BUILD_VERSION: "${GITHUB_SHA::8}"
+  BUILD_NUMBER: "{{ github.run_number }}"
+
 jobs:
   build-binaries:
     name: "Build binaries"
@@ -31,10 +35,6 @@ jobs:
         run: echo "BUILD_OS=darwin" >> $GITHUB_ENV
       - name: Set BUILD_ARCH environment variable
         run: echo "BUILD_ARCH=amd64" >> $GITHUB_ENV
-      - name: Set BUILD_NUMBER environment variable
-        run: echo "BUILD_NUMBER=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-      - name: Set BUILD_VERSION environment variable
-        run: echo "BUILD_VERSION=`git describe --always`" >> $GITHUB_ENV
 
       - name: Build git-lfs-authenticate
         run: dart compile exe bin/git_lfs_authenticate.dart --output git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
@@ -59,8 +59,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set BUILD_VERSION environment variable
-        run: echo "BUILD_VERSION=`git describe --always`" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -79,4 +77,4 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/amz-git-mirroring:${{ env.BUILD_VERSION }}
+          tags: ${{ github.actor }}/amz-git-mirroring:${{ env.BUILD_VERSION }}
