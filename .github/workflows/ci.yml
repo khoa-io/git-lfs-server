@@ -11,29 +11,23 @@ env:
   BUILD_NUMBER: "${{ github.run_number }}"
 
 jobs:
-  build-binaries:
-    name: "Build binaries"
+  build-binaries-linux-amd64:
+    name: "Build binaries for Linux AMD64"
     runs-on: "${{ matrix.os }}"
     strategy:
       matrix:
         os: [ubuntu-latest]
-        arch: [amd64, arm64]
+        arch: [amd64]
     container:
-      image: |
-        arm64v8/dart
+      image:
         amd64/dart
       options: --tty --platform linux/${{ matrix.arch }}
+    env:
+      BUILD_OS: "linux"
+      BUILD_ARCH: "${{ matrix.arch }}"
     steps:
       - uses: actions/checkout@v3
-      - name: Print some information
-        run: echo "Image ${{ job.container.image }}"
       - uses: dart-lang/setup-dart@v1.3
-        if: "${{ job.container.image }} == arm64v8/dart"
-        with:
-          sdk: stable
-          architecture: arm64
-      - uses: dart-lang/setup-dart@v1.3
-        if: "${{ job.container.image }} == amd64/dart"
         with:
           sdk: stable
           architecture: x64
@@ -41,17 +35,46 @@ jobs:
       - name: Install dependencies
         run: dart pub get
 
-      - name: Set BUILD_OS environment variable for Linux
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: echo "BUILD_OS=linux" >> $GITHUB_ENV
-      - name: Set BUILD_OS environment variable for macOS
-        if: ${{ matrix.os == 'macos-latest' }}
-        run: echo "BUILD_OS=darwin" >> $GITHUB_ENV
-      - name: Set BUILD_ARCH environment variable
-        run: echo "BUILD_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
-      - name: Set BUILD_ARCH environment variable
-        if: ${{ matrix.arch == 'arm64' }}
-        run: echo "BUILD_ARCH=arm64" >> $GITHUB_ENV
+      - name: Create build folder
+        run: mkdir -p build
+
+      - name: Build git-lfs-authenticate
+        run: dart compile exe bin/git_lfs_authenticate.dart --output build/git-lfs-authenticate
+      - uses: actions/upload-artifact@v3
+        with:
+          name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          path: build/git-lfs-authenticate
+
+      - name: Build git-lfs-server
+        run: dart compile exe bin/git_lfs_server.dart --output build/git-lfs-server
+      - uses: actions/upload-artifact@v3
+        with:
+          name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          path: build/git-lfs-server
+
+  build-binaries-linux-arm64:
+    name: "Build binaries for Linux ARM64"
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        arch: [arm64]
+    container:
+      image:
+        arm64v8/dart
+      options: --tty --platform linux/${{ matrix.arch }}
+    env:
+      BUILD_OS: "linux"
+      BUILD_ARCH: "${{ matrix.arch }}"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dart-lang/setup-dart@v1.3
+        with:
+          sdk: stable
+          architecture: arm64
+
+      - name: Install dependencies
+        run: dart pub get
 
       - name: Create build folder
         run: mkdir -p build
@@ -78,14 +101,13 @@ jobs:
     strategy:
       matrix:
         arch: [amd64, arm64]
+    env:
+      BUILD_OS: "linux"
+      BUILD_ARCH: "${{ matrix.arch }}"
     permissions:
       contents: read
       packages: write
     steps:
-      - name: Set BUILD_OS environment variable for Linux
-        run: echo "BUILD_OS=linux" >> $GITHUB_ENV
-      - name: Set BUILD_ARCH environment variable
-        run: echo "BUILD_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
