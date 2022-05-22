@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  BUILD_VERSION: "${{ github.sha }}::7"
-
 jobs:
   info:
     name: "Print information"
@@ -18,6 +15,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v3
+      - name: Compute BUILD_VERSION
+        run: echo "BUILD_VERSION=`git rev-parse --short HEAD`" >> $GITHUB_ENV
       - run: echo "BUILD_VERSION=${{ env.BUILD_VERSION }}"
       - run: echo "matrix.os=${{ matrix.os }}"
       - run: echo "github.sha=${{ github.sha }}"
