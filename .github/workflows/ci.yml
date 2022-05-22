@@ -18,11 +18,13 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
+        arch: [x64, arm64]
     steps:
       - uses: actions/checkout@v3
       - uses: dart-lang/setup-dart@v1.3
         with:
           sdk: stable
+          architecture: ${{ matrix.arch }}
 
       - name: Install dependencies
         run: dart pub get
@@ -34,7 +36,11 @@ jobs:
         if: ${{ matrix.os == 'macos-latest' }}
         run: echo "BUILD_OS=darwin" >> $GITHUB_ENV
       - name: Set BUILD_ARCH environment variable
+        if: ${{ matrix.arch == 'x64' }}
         run: echo "BUILD_ARCH=amd64" >> $GITHUB_ENV
+      - name: Set BUILD_ARCH environment variable
+        if: ${{ matrix.arch == 'arm64' }}
+        run: echo "BUILD_ARCH=arm64" >> $GITHUB_ENV
 
       - name: Create build folder
         run: mkdir -p build
@@ -58,6 +64,9 @@ jobs:
     needs:
       - build-binaries
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
     permissions:
       contents: read
       packages: write
@@ -65,7 +74,7 @@ jobs:
       - name: Set BUILD_OS environment variable for Linux
         run: echo "BUILD_OS=linux" >> $GITHUB_ENV
       - name: Set BUILD_ARCH environment variable
-        run: echo "BUILD_ARCH=amd64" >> $GITHUB_ENV
+        run: echo "BUILD_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
@@ -93,6 +102,6 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/${{ matrix.arch }}
           push: true
           tags: ghcr.io/${{ github.actor }}/amz-git-mirroring:${{ env.BUILD_VERSION }}
