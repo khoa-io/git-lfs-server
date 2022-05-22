@@ -35,21 +35,22 @@ jobs:
       - name: Set BUILD_ARCH environment variable
         run: echo "BUILD_ARCH=amd64" >> $GITHUB_ENV
 
+      - name: Create build folder
+        run: mkdir -p build
+
       - name: Build git-lfs-authenticate
-        run: dart compile exe bin/git_lfs_authenticate.dart --output git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+        run: dart compile exe bin/git_lfs_authenticate.dart --output build/git-lfs-authenticate
       - uses: actions/upload-artifact@v3
         with:
           name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
-          path: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          path: build/git-lfs-authenticate
 
       - name: Build git-lfs-server
-        run: dart compile exe bin/git_lfs_server.dart --output git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+        run: dart compile exe bin/git_lfs_server.dart --output build/git-lfs-server
       - uses: actions/upload-artifact@v3
         with:
           name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
-          path: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
-      - name: Copy binaries to build folder
-        run: mkdir -p build && cp git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }} build/git-lfs-authenticate && cp git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }} build/git-lfs-server
+          path: build/git-lfs-server
 
   build-images:
     name: "Build images"
