@@ -52,19 +52,27 @@ jobs:
           name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
           path: build/git-lfs-server
 
-      - name: Cache build artifacts
-        uses: actions/cache@v3
-        with:
-          path: |
-            build
-
   build-images:
     name: "Build images"
     needs:
       - build-binaries
     runs-on: ubuntu-latest
     steps:
+      - name: Set BUILD_OS environment variable for Linux
+        run: echo "BUILD_OS=linux" >> $GITHUB_ENV
+      - name: Set BUILD_ARCH environment variable
+        run: echo "BUILD_ARCH=amd64" >> $GITHUB_ENV
       - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          path: build/git-lfs-authenticate
+      - uses: actions/download-artifact@v3
+        with:
+          name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_NUMBER }}-${{ env.BUILD_VERSION }}
+          path: build/git-lfs-server
+      - name: List binaries
+        run: ls -la build
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
