@@ -17,15 +17,15 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        arch: [amd64, arm64v8]
+        arch: [amd64, arm64]
     container:
       image:
-        ${{ matrix.arch }}/dart
+        dart
       options: --tty --platform linux/${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v3
       - uses: dart-lang/setup-dart@v1.3
-        if: "${{ matrix.arch }} == arm64v8"
+        if: "${{ matrix.arch }} == arm64"
         with:
           sdk: stable
           architecture: arm64
@@ -47,7 +47,7 @@ jobs:
       - name: Set BUILD_ARCH environment variable
         run: echo "BUILD_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
       - name: Set BUILD_ARCH environment variable
-        if: ${{ matrix.arch == 'arm64v8' }}
+        if: ${{ matrix.arch == 'arm64' }}
         run: echo "BUILD_ARCH=arm64" >> $GITHUB_ENV
 
       - name: Create build folder
