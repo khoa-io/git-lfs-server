@@ -116,7 +116,7 @@ jobs:
             BUILD_VERSION: "${{ env.BUILD_VERSION }}"
           install: |
             apt-get update -q
-            apt-get install -q -y curl git
+            apt-get install -q -y curl git unzip
             curl --connect-timeout 15 --retry 5 "https://storage.googleapis.com/dart-archive/channels/be/raw/latest/sdk/dartsdk-linux-arm64-release.zip" > "${HOME}/dartsdk.zip"
             unzip -o "${HOME}/dartsdk.zip" -d "${HOME}" > /dev/null
             if [ $? -ne 0 ]; then
