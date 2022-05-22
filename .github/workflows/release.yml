@@ -108,7 +108,7 @@ jobs:
           dockerRunArgs: |
             --volume "${PWD}/build:/build"
           env: |
-            BUILD_BRANCH: "${{ github.head_ref }}"
+            BUILD_BRANCH: "${{ github.ref_name }}"
           install: |
             apt-get update -q
             apt-get install -q -y curl git unzip
@@ -178,9 +178,8 @@ jobs:
       - name: Login to GitHub Packages
         uses: docker/login-action@v1
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       - name: Build and push Docker images
         uses: docker/build-push-action@v3
         with:
