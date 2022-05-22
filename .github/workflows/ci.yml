@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8``" >> $GITHUB_ENV
+        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
       - uses: dart-lang/setup-dart@v1.3
         with:
           sdk: stable
@@ -62,7 +62,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8``" >> $GITHUB_ENV
+        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
       - uses: dart-lang/setup-dart@v1.3
         with:
           sdk: stable
@@ -101,7 +101,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8``" >> $GITHUB_ENV
+        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
       - uses: uraimo/run-on-arch-action@v2
         name: Build ARM64 binaries
         with:
@@ -165,7 +165,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Compute BUILD_VERSION
-        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8``" >> $GITHUB_ENV
+        run: echo "BUILD_VERSION=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
       - uses: actions/download-artifact@v3
         with:
           name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
@@ -194,4 +194,6 @@ jobs:
           file: ./Dockerfile
           platforms: linux/${{ matrix.arch }}
           push: true
-          tags: ghcr.io/${{ github.actor }}/amz-git-mirroring:${{ env.BUILD_VERSION }}
+          tags: |
+            ghcr.io/${{ github.actor }}/amz-git-mirroring:${{ env.BUILD_VERSION }}
+            ghcr.io/${{ github.actor }}/amz-git-mirroring:latest
