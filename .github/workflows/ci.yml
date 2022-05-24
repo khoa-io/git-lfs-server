@@ -108,15 +108,15 @@ jobs:
             --volume "${PWD}/build:/build"
             --volume "${HOME}/dart-sdk:/dart-sdk"
             --user "${{ env.RUNNER_UID }}:${{ env.RUNNER_GID }}"
-          install: |
-            echo "PUB_CACHE=/.pub-cache" >> ${HOME}/.bashrc
-            echo "DART_HOME=/dart-sdk" >> ${HOME}/.bashrc
+          env: |
+            PUB_CACHE: "${HOME}/.pub-cache"
+            DART_HOME: "/dart-sdk"
           run: |
             cd /source
-            /dart-sdk/bin/dart --version
-            /dart-sdk/bin/dart pub get
-            /dart-sdk/bin/dart compile exe bin/git_lfs_server.dart --output /build/git-lfs-server
-            /dart-sdk/bin/dart compile exe bin/git_lfs_authenticate.dart --output /build/git-lfs-authenticate
+            ${DART_HOME}/bin/dart --version
+            ${DART_HOME}/bin/dart pub get
+            ${DART_HOME}/bin/dart compile exe bin/git_lfs_server.dart --output /build/git-lfs-server
+            ${DART_HOME}/bin/dart compile exe bin/git_lfs_authenticate.dart --output /build/git-lfs-authenticate
       - uses: actions/upload-artifact@v3
         with:
           name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
