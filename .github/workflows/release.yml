@@ -11,14 +11,10 @@ env:
 jobs:
   build-binaries-macos-amd64:
     name: "Build binaries for macOS AMD64"
-    runs-on: "${{ matrix.os }}"
-    strategy:
-      matrix:
-        os: [macos-latest]
-        arch: [amd64]
+    runs-on: macos-latest
     env:
       BUILD_OS: "macos"
-      BUILD_ARCH: "${{ matrix.arch }}"
+      BUILD_ARCH: "amd64"
     steps:
       - uses: actions/checkout@v3
       - uses: dart-lang/setup-dart@v1.3
@@ -47,24 +43,15 @@ jobs:
 
   build-binaries-linux-amd64:
     name: "Build binaries for Linux AMD64"
-    runs-on: "${{ matrix.os }}"
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        arch: [amd64]
-    container:
-      image:
-        amd64/dart
-      options: --tty --platform linux/${{ matrix.arch }}
+    runs-on: ubuntu-latest
     env:
       BUILD_OS: "linux"
-      BUILD_ARCH: "${{ matrix.arch }}"
+      BUILD_ARCH: "amd64"
     steps:
       - uses: actions/checkout@v3
       - uses: dart-lang/setup-dart@v1.3
         with:
           sdk: stable
-          architecture: x64
 
       - name: Install dependencies
         run: dart pub get
@@ -88,16 +75,18 @@ jobs:
 
   build-binaries-linux-arm64:
     name: "Build binaries for Linux ARM64"
-    runs-on: "${{ matrix.os }}"
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        arch: [arm64]
+    runs-on: ubuntu-latest
     env:
       BUILD_OS: "linux"
-      BUILD_ARCH: "${{ matrix.arch }}"
+      BUILD_ARCH: "arm64"
     steps:
       - uses: actions/checkout@v3
+      - name: Compute environment variables
+        run: |
+          echo "RUNNER_UID=`id -u`" >> $GITHUB_ENV
+          echo "RUNNER_GID=`id -g`" >> $GITHUB_ENV
+
+      # Run inside a linux/arm64 container
       - uses: uraimo/run-on-arch-action@v2
         name: Build ARM64 binaries
         with:
@@ -105,39 +94,31 @@ jobs:
           distro: ubuntu18.04
           setup: |
             mkdir -p "${PWD}/build"
-          dockerRunArgs: |
-            --volume "${PWD}/build:/build"
-          env: |
-            BUILD_BRANCH: "${{ github.ref_name }}"
-          install: |
-            apt-get update -q
-            apt-get install -q -y curl git unzip
             curl --connect-timeout 15 --retry 5 "https://storage.googleapis.com/dart-archive/channels/be/raw/latest/sdk/dartsdk-linux-arm64-release.zip" > "${HOME}/dartsdk.zip"
             unzip -o "${HOME}/dartsdk.zip" -d "${HOME}" > /dev/null
             if [ $? -ne 0 ]; then
               echo -e "::error::Download failed! Please check passed arguments."
               exit 1
             fi
-            rm "${HOME}/dartsdk.zip"
-            PUBCACHE="${HOME}/.pub-cache"
-            DART_HOME="${HOME}/dart-sdk"
-            echo "PUB_CACHE=${PUBCACHE}" >> ${HOME}/.bashrc
-            echo "Pub cache set to: ${PUBCACHE}"
-            echo "DART_HOME=${DART_HOME}" >> ${HOME}/.bashrc
-            echo -e "Successfully installed Dart SDK:"
-            ${HOME}/dart-sdk/bin/dart --version
+          dockerRunArgs: |
+            --volume "${PWD}:/source"
+            --volume "${PWD}/build:/build"
+            --volume "${HOME}/dart-sdk:/dart-sdk"
+            --user "${{ env.RUNNER_UID }}:${{ env.RUNNER_GID }}"
+          env: |
+            PUB_CACHE: "${HOME}/.pub-cache"
+            DART_HOME: "/dart-sdk"
           run: |
-            git clone --quiet https://github.com/khoa-io/git-lfs-server.git --branch "${BUILD_BRANCH}" --depth 1
-            cd git-lfs-server
-            "${HOME}/dart-sdk/bin/dart" pub get
-            "${HOME}/dart-sdk/bin/dart" compile exe bin/git_lfs_server.dart --output git-lfs-server
-            "${HOME}/dart-sdk/bin/dart" compile exe bin/git_lfs_authenticate.dart --output git-lfs-authenticate
-            cp git-lfs-server "/build"
-            cp git-lfs-authenticate "/build"
+            cd /source
+            ${DART_HOME}/bin/dart --version
+            ${DART_HOME}/bin/dart pub get
+            ${DART_HOME}/bin/dart compile exe bin/git_lfs_server.dart --output /build/git-lfs-server
+            ${DART_HOME}/bin/dart compile exe bin/git_lfs_authenticate.dart --output /build/git-lfs-authenticate
       - uses: actions/upload-artifact@v3
         with:
           name: git-lfs-authenticate-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
           path: build/git-lfs-authenticate
+
       - uses: actions/upload-artifact@v3
         with:
           name: git-lfs-server-${{ env.BUILD_OS }}-${{ env.BUILD_ARCH }}-${{ env.BUILD_VERSION }}
