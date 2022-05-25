@@ -8,20 +8,19 @@ ARG UID="1000"
 ARG GROUP="git"
 ARG GID="1000"
 
-RUN apt-get update && apt-get upgrade -y
-RUN apt-get install -y openssh-server git curl bash
+RUN apt-get -qq update && apt-get -qq upgrade -y
+RUN apt-get -qq install -y openssh-server git curl bash
 RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
-RUN apt-get update && apt-get install -y git-lfs
-RUN apt-get clean && apt-get autoclean
+RUN apt-get -qq update && apt-get -qq install -y git-lfs
+RUN apt-get -qq clean && apt-get -qq autoclean
 
 RUN echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config
 RUN echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
-RUN ssh-keygen -A
 
 # Build and install the binaries
 COPY . /source
 WORKDIR /source
-RUN dart pub get
+RUN dart pub get > /dev/null
 RUN dart compile exe bin/git_lfs_server.dart --output /usr/local/bin/git-lfs-server
 RUN dart compile exe bin/git_lfs_authenticate.dart --output /usr/local/bin/git-lfs-authenticate
 RUN rm -rf /source

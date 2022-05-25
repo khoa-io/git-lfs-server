@@ -14,6 +14,9 @@ There are other [implementations](https://github.com/git-lfs/git-lfs/wiki/Implem
 * Maintained by:
 [Khoa](https://github.com/khoa-io)
 
+* Supported architectures:
+`amd64`, `arm64`, `arm32v7`
+
 * Documentation:
 [git-lfs-server Wiki](https://github.com/khoa-io/git-lfs-server/wiki).
 
@@ -42,17 +45,19 @@ For the sake of simplicity, I have created a Docker Hub repository with the imag
 
 If all requirements are satisfied, let us proceed step-by-step
 1. Pull the image: `docker pull khoa10/amz-git-mirroring:latest`
-2. Create a volume to store the certificate:
-```bash
-# There must be a folder named `certificates` with 3 files: `git-lfs-server.key`, `git-lfs-server.cert`, `git-lfs-server.pem`
-docker volume create --name git-lfs-server-certs
-docker run --rm -v $PWD:/source -v git-lfs-server-certs:/dest -w /source alpine cp -r certificates /dest
+2. There must be a folder named `certificates` with 3 files: `git-lfs-server.key`, `git-lfs-server.cert`, `git-lfs-server.pem`. Create a volume to store the certificate:
 ```
-3. With your mirrors are located at `$MIRRORING_PATH`, create the container:
+$ ls certificates
+git-lfs-server.crt  git-lfs-server.key  git-lfs-server.pem
+$ docker volume create --name git-lfs-server-certs
+$ docker run --rm -v $PWD:/source -v git-lfs-server-certs:/dest -w /source alpine cp "certificates/git-lfs-server.key" "certificates/git-lfs-server.crt" "certificates/git-lfs-server.pem" /dest
+```
+1. With your mirrors are located at `$INSERT_YOUR_PATH_HERE`, create the container:
 ```bash
 docker run \
 --detach \
---mount type=bind,src=${MIRRORING_PATH},dst=/source \
+--env GIT_LFS_SERVER_URL="https://$INSERT_URL_HERE:8443" \
+--mount type=bind,src=$INSERT_YOUR_PATH_HERE,dst=/source \
 --mount type=volume,src=git-lfs-server-certs,dst=/etc/git-lfs-server/certificates \
 -p 8443:8443 \
 -p 2022:22 \
