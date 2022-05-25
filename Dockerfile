@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 FROM debian:bullseye-slim
 
+ENV BUILD_VERSION
 ARG TARGETPLATFORM
 ARG USER="git"
 ARG UID="1000"
@@ -17,9 +18,9 @@ RUN echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config
 RUN echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
 RUN ssh-keygen -A
 
-COPY build/${TARGETPLATFORM}/git-lfs-authenticate /usr/local/bin/git-lfs-authenticate
+COPY build/git-lfs-authenticate-${TARGETPLATFORM}-${BUILD_VERSION} /usr/local/bin/git-lfs-authenticate
 RUN chmod +x /usr/local/bin/git-lfs-authenticate
-COPY build/${TARGETPLATFORM}/git-lfs-server /usr/local/bin/git-lfs-server
+COPY build/git-lfs-server-${TARGETPLATFORM}-${BUILD_VERSION} /usr/local/bin/git-lfs-server
 RUN chmod +x /usr/local/bin/git-lfs-server
 
 RUN echo `which git-shell` >> /etc/shells

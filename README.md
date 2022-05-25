@@ -52,7 +52,6 @@ docker run --rm -v $PWD:/source -v git-lfs-server-certs:/dest -w /source alpine 
 ```bash
 docker run \
 --detach \
---name git-mirroring-with-lfs-enabled \
 --mount type=bind,src=${MIRRORING_PATH},dst=/source \
 --mount type=volume,src=git-lfs-server-certs,dst=/etc/git-lfs-server/certificates \
 -p 8443:8443 \
