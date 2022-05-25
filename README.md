@@ -1,7 +1,7 @@
 A simple Git LFS server implementation in Dart
 ===============================
 
-[![CI](https://github.com/khoa-io/git-lfs-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/khoa-io/git-lfs-server/actions/workflows/ci.yml)
+[![CI](https://github.com/khoa-io/git-lfs-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/khoa-io/git-lfs-server/actions/workflows/ci.yml)[![Release](https://github.com/khoa-io/git-lfs-server/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/khoa-io/git-lfs-server/actions/workflows/release.yml)
 # Overview
 
 Git LFS client (`git-lfs` or `git lfs` command) requires a dedicated LFS-content server (not the Git server!) in order to download/upload binary files. There will be an issue if you try to use a mirror of a Git repo with LFS-enabled: [git-lfs#1338](https://github.com/git-lfs/git-lfs/issues/1338). This Git LFS server implementation solves that problem.
