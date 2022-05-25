@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM dart
+FROM dart:stable
 
 ENV PUB_CACHE=/source/.pub-cache
 
