@@ -20,7 +20,7 @@ RUN echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
 # Build and install the binaries
 COPY . /source
 WORKDIR /source
-RUN dart pub get > /dev/null
+RUN dart pub get
 RUN dart compile exe bin/git_lfs_server.dart --output /usr/local/bin/git-lfs-server
 RUN dart compile exe bin/git_lfs_authenticate.dart --output /usr/local/bin/git-lfs-authenticate
 RUN rm -rf /source
