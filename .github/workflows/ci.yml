@@ -31,7 +31,7 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: false
           tags: |
             ghcr.io/${{ github.actor }}/amz-git-mirroring:${{ env.BUILD_VERSION }}
             ghcr.io/${{ github.actor }}/amz-git-mirroring:latest
