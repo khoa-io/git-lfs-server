@@ -12,6 +12,7 @@ RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y openssh-server git curl bash
 RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
 RUN apt-get update && apt-get install -y git-lfs
+RUN apt-get clean && apt-get autoclean
 
 RUN echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config
 RUN echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
