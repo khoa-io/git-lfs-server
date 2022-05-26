@@ -15,7 +15,7 @@ There are other [implementations](https://github.com/git-lfs/git-lfs/wiki/Implem
 [Khoa](https://github.com/khoa-io)
 
 * Supported architectures:
-`amd64`, `arm64`, `arm32v7`
+`amd64`, `arm64`
 
 * Documentation:
 [git-lfs-server Wiki](https://github.com/khoa-io/git-lfs-server/wiki).
