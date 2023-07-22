@@ -1,29 +1,31 @@
 # syntax=docker/dockerfile:1
-FROM dart:stable
+FROM dart:stable AS builder
 
+# Build binaries
+COPY . /source
+WORKDIR /source
 ENV PUB_CACHE=/source/.pub-cache
+RUN mkdir /build \
+    && dart pub get \
+    && dart compile exe bin/git_lfs_server.dart --output /build/git-lfs-server \
+    && dart compile exe bin/git_lfs_authenticate.dart --output /build/git-lfs-authenticate
+
+FROM debian:bullseye-slim
+# Install built binaries
+COPY --from=builder /build/ /usr/local/bin/
+
+RUN apt-get -qq update && apt-get -qq upgrade -y \
+    && apt-get -qq install -y openssh-server git curl bash \
+    && curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash \
+    && apt-get -qq update && apt-get -qq install -y git-lfs \
+    && apt-get -qq clean && apt-get -qq autoclean && rm -rf /tmp/* \
+    && echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config \
+    && echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
 
 ARG USER="git"
 ARG UID="1000"
 ARG GROUP="git"
 ARG GID="1000"
-
-RUN apt-get -qq update && apt-get -qq upgrade -y
-RUN apt-get -qq install -y openssh-server git curl bash
-RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
-RUN apt-get -qq update && apt-get -qq install -y git-lfs
-RUN apt-get -qq clean && apt-get -qq autoclean
-
-RUN echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config
-RUN echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
-
-# Build and install the binaries
-COPY . /source
-WORKDIR /source
-RUN dart pub get
-RUN dart compile exe bin/git_lfs_server.dart --output /usr/local/bin/git-lfs-server
-RUN dart compile exe bin/git_lfs_authenticate.dart --output /usr/local/bin/git-lfs-authenticate
-RUN rm -rf /source
 
 RUN echo `which git-shell` >> /etc/shells
 RUN useradd --create-home --shell `which git-shell` --uid ${UID} --user-group ${USER}
